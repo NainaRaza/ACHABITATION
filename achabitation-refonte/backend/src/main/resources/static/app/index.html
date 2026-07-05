@@ -1,0 +1,521 @@
+<!doctype html>
+<html lang="fr">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>ACHABITATION - Gestion finance - partage au RAV</title>
+    <link rel="stylesheet" href="/app/styles.css">
+</head>
+<body>
+<header class="topbar">
+    <div class="brand-block">
+        <p class="eyebrow">ACHABITATION</p>
+        <h1>Gestion finance - partage au RAV</h1>
+    </div>
+    <div class="topbar-meta">
+        <div class="top-trip">
+            <span class="top-label">Voyage actif</span>
+            <strong id="topSelectedTripName">Aucun voyage</strong>
+        </div>
+        <div class="top-user">
+            <span class="top-label">Utilisateur</span>
+            <strong id="topUserName">Non connecté</strong>
+            <button id="topProfileBtn" class="top-link-button" type="button">Profil / compte</button>
+        </div>
+        <div class="status" id="backendStatus">Backend non vérifié</div>
+    </div>
+</header>
+
+<main class="app-shell">
+    <div id="messageBox" class="message hidden"></div>
+
+    <section class="hero card">
+        <div>
+            <p class="eyebrow dark">Voyage sélectionné</p>
+            <h2 id="selectedTripTitle">Aucun voyage sélectionné</h2>
+            <p class="muted" id="selectedTripMeta">Crée ou sélectionne un voyage pour commencer.</p>
+        </div>
+        <div class="actions">
+            <button id="quickAddExpenseBtn" type="button">+ Dépense</button>
+            <button id="quickAddPersonBtn" type="button" class="secondary">+ Participant·e</button>
+            <button id="refreshBtn" type="button" class="secondary">Rafraîchir</button>
+        </div>
+    </section>
+
+    <nav class="tabs" aria-label="Navigation principale">
+        <button class="tab active" data-tab="dashboard" type="button">Tableau de bord</button>
+        <button class="tab" data-tab="persons" type="button">Participant·es</button>
+        <button class="tab" data-tab="expenses" type="button">Dépenses</button>
+        <button class="tab" data-tab="summary" type="button">Résumé</button>
+        <button class="tab" data-tab="settings" type="button">Paramètres</button>
+        <button class="tab" data-tab="audit" type="button">Historique</button>
+    </nav>
+
+    <section id="dashboardTab" class="tab-panel active">
+        <div class="grid two responsive">
+            <section class="card">
+                <div class="card-title-row">
+                    <div>
+                        <h2>Mes voyages</h2>
+                        <p class="muted">Sélectionne un voyage ou crée-en un nouveau.</p>
+                    </div>
+                    <button id="showTripFormBtn" type="button" class="secondary">+ Nouveau voyage</button>
+                </div>
+                <div id="tripFormPanel" class="drawer hidden">
+                    <form id="tripForm" class="stack">
+                        <label>Nom du voyage
+                            <input id="tripName" required type="text" placeholder="Vacances août 2026">
+                        </label>
+                        <div class="grid two">
+                            <label>Début
+                                <input id="tripStartDate" type="date" required>
+                            </label>
+                            <label>Fin
+                                <input id="tripEndDate" type="date" required>
+                            </label>
+                        </div>
+                        <label>Devise de référence
+                            <input id="tripCurrency" maxlength="3" minlength="3" type="text" value="EUR">
+                        </label>
+                        <div class="actions">
+                            <button type="submit">Créer le voyage</button>
+                            <button id="closeTripFormBtn" type="button" class="secondary">Annuler</button>
+                        </div>
+                    </form>
+                </div>
+
+                <div id="joinTripPanel" class="subcard join-trip-panel">
+                    <h3>Rejoindre un voyage</h3>
+                    <p class="small">Entre le code d’invitation transmis par l’organisateur·ice. Tu dois être connecté·e.</p>
+                    <div class="inline-add">
+                        <input id="joinInvitationCode" type="text" placeholder="Code d’invitation">
+                        <button id="joinTripByCodeBtn" type="button" class="secondary small-button">Rejoindre</button>
+                    </div>
+                </div>
+
+                <div id="tripList" class="list"></div>
+            </section>
+
+            <section class="card">
+                <h2>Vue d’ensemble</h2>
+                <div class="metric-grid">
+                    <div class="metric-card"><span>Participant·es</span><strong id="metricPersons">0</strong></div>
+                    <div class="metric-card"><span>Dépenses</span><strong id="metricExpenses">0</strong></div>
+                    <div class="metric-card"><span>Total dépensé</span><strong id="metricTotalExpenses">0,00 €</strong></div>
+                    <div class="metric-card"><span>Devise</span><strong id="metricCurrency">EUR</strong></div>
+                </div>
+                <div class="quick-panel">
+                    <button id="dashboardAddExpenseBtn" type="button">Ajouter une dépense</button>
+                    <button id="dashboardAddPersonBtn" type="button" class="secondary">Ajouter un·e participant·e</button>
+                    <button id="dashboardSummaryBtn" type="button" class="secondary">Voir les remboursements</button>
+                </div>
+            </section>
+        </div>
+    </section>
+
+    <section id="personsTab" class="tab-panel">
+        <section class="card">
+            <div class="card-title-row">
+                <div>
+                    <h2>Participant·es</h2>
+                    <p class="muted">Les formulaires sont masqués par défaut pour garder l’écran lisible.</p>
+                </div>
+                <button id="showPersonFormBtn" type="button">+ Ajouter un guest</button>
+            </div>
+            <div id="personFormPanel" class="drawer hidden">
+                <div class="card-title-row inner">
+                    <h3 id="personFormTitle">Ajouter une personne</h3>
+                    <div class="actions">
+                        <button id="resetPersonBtn" class="secondary small-button" type="button">Réinitialiser</button>
+                        <button id="closePersonFormBtn" class="secondary small-button" type="button">Fermer</button>
+                    </div>
+                </div>
+                <form id="personForm" class="stack">
+                    <input id="personId" type="hidden">
+                    <label>Nom
+                        <input id="personName" type="text" required placeholder="Sofia">
+                    </label>
+                    <div class="grid two">
+                        <label>Mode de poids
+                            <select id="personWeightMode">
+                                <option value="LIVING_REST">Reste à vivre</option>
+                                <option value="AVERAGE">Moyenne</option>
+                            </select>
+                        </label>
+                        <label>Reste à vivre simple
+                            <input id="personLivingRest" type="number" min="0" step="0.01" value="1000">
+                        </label>
+                    </div>
+                    <label class="checkbox">
+                        <input id="personAdvancedRav" type="checkbox">
+                        Calcul avancé du reste à vivre
+                    </label>
+                    <div id="advancedRavBlock" class="subcard hidden">
+                        <div class="grid four">
+                            <label>Salaire net après impôt
+                                <input id="netIncomeAfterTax" type="number" min="0" step="0.01" value="0">
+                            </label>
+                            <label>Loyer
+                                <input id="rent" type="number" min="0" step="0.01" value="0">
+                            </label>
+                            <label>Crédits
+                                <input id="credits" type="number" min="0" step="0.01" value="0">
+                            </label>
+                            <label>Charges fixes
+                                <input id="fixedCharges" type="number" min="0" step="0.01" value="0">
+                            </label>
+                            <label>Transport
+                                <input id="transport" type="number" min="0" step="0.01" value="0">
+                            </label>
+                            <label>Assurances
+                                <input id="insurance" type="number" min="0" step="0.01" value="0">
+                            </label>
+                            <label>Autres charges contraintes
+                                <input id="otherMandatoryExpenses" type="number" min="0" step="0.01" value="0">
+                            </label>
+                            <label>Protections menstruelles
+                                <input id="menstrualProtection" type="number" min="0" step="0.01" value="0">
+                            </label>
+                        </div>
+                        <button id="calculateRavBtn" type="button" class="secondary">Calculer le RAV</button>
+                    </div>
+                    <div class="inline-options">
+                        <label class="checkbox"><input id="personVegetarian" type="checkbox"> Végétarien</label>
+                        <label class="checkbox"><input id="personNoAlcohol" type="checkbox"> Sans alcool</label>
+                        <label class="checkbox"><input id="personActive" type="checkbox" checked> Actif</label>
+                    </div>
+                    <div class="field-block">
+                        <div class="field-header">
+                            <span class="field-label">Contraintes personnalisées</span>
+                        </div>
+                        <p class="small">Seules les contraintes déclarées dans les paramètres du voyage sont proposées ici.</p>
+                        <div id="customConstraintCheckboxes" class="checkbox-list compact-list"></div>
+                        <div class="inline-add">
+                            <input id="newCustomConstraintName" type="text" placeholder="Nom de la contrainte du voyage">
+                            <button id="addCustomConstraintBtn" type="button" class="secondary small-button">+ Ajouter au voyage</button>
+                        </div>
+                    </div>
+                    <div class="field-block">
+                        <div class="field-header">
+                            <span class="field-label">Périodes de présence</span>
+                            <button id="addPresencePeriodBtn" type="button" class="secondary small-button">+ Ajouter une période</button>
+                        </div>
+                        <div id="presencePeriodsRows" class="presence-periods" aria-label="Périodes de présence"></div>
+                        <p class="small">Chaque période doit être comprise dans les dates du voyage. Les périodes d’une même personne ne doivent pas se chevaucher.</p>
+                    </div>
+                    <button type="submit">Enregistrer la personne</button>
+                </form>
+            </div>
+            <div class="table-wrap">
+                <table>
+                    <thead>
+                    <tr>
+                        <th>Nom</th>
+                        <th>Poids</th>
+                        <th>Options</th>
+                        <th>Présence</th>
+                        <th>Actions</th>
+                    </tr>
+                    </thead>
+                    <tbody id="personsTable"></tbody>
+                </table>
+            </div>
+        </section>
+    </section>
+
+    <section id="expensesTab" class="tab-panel">
+        <section class="card">
+            <div class="card-title-row">
+                <div>
+                    <h2>Dépenses</h2>
+                    <p class="muted">Les détails de saisie s’ouvrent uniquement quand tu ajoutes ou modifies une dépense.</p>
+                </div>
+                <button id="showExpenseFormBtn" type="button">+ Ajouter une dépense</button>
+            </div>
+            <div id="expenseFormPanel" class="drawer hidden">
+                <div class="card-title-row inner">
+                    <h3 id="expenseFormTitle">Ajouter une dépense</h3>
+                    <div class="actions">
+                        <button id="resetExpenseBtn" class="secondary small-button" type="button">Réinitialiser</button>
+                        <button id="closeExpenseFormBtn" class="secondary small-button" type="button">Fermer</button>
+                    </div>
+                </div>
+                <form id="expenseForm" class="stack">
+                    <input id="expenseId" type="hidden">
+                    <label>Titre
+                        <input id="expenseTitle" required type="text" placeholder="Courses Carrefour">
+                    </label>
+                    <div class="grid two">
+                        <label>Date
+                            <input id="expenseDate" type="date" required>
+                        </label>
+                        <label>Payé par
+                            <select id="expensePayer" required></select>
+                        </label>
+                    </div>
+                    <div class="grid three">
+                        <label>Total
+                            <input id="expenseTotal" required type="number" min="0.01" step="0.01" value="0">
+                        </label>
+                        <label>Dont viande
+                            <input id="expenseMeat" type="number" min="0" step="0.01" value="0">
+                        </label>
+                        <label>Dont alcool
+                            <input id="expenseAlcohol" type="number" min="0" step="0.01" value="0">
+                        </label>
+                    </div>
+                    <div id="expenseCustomAmountsBlock" class="subcard">
+                        <div class="field-header">
+                            <span class="field-label">Montants liés aux contraintes personnalisées</span>
+                        </div>
+                        <p class="small">Chaque montant sera réparti entre les personnes présentes qui n’ont pas coché la contrainte correspondante.</p>
+                        <div id="expenseCustomAmountRows" class="custom-amounts"></div>
+                    </div>
+                    <div class="grid two">
+                        <label>Type
+                            <select id="expenseType">
+                                <option value="NORMAL">Normale</option>
+                                <option value="GLOBAL">Globale</option>
+                            </select>
+                        </label>
+                        <label>Devise
+                            <input id="expenseCurrency" type="text" maxlength="3" minlength="3" value="EUR">
+                        </label>
+                    </div>
+                    <label>Taux vers la devise du voyage
+                        <input id="expenseExchangeRate" type="number" min="0.000001" step="0.000001" value="1">
+                    </label>
+                    <label class="checkbox">
+                        <input id="expenseAdvancedMode" type="checkbox">
+                        Mode avancé : choisir manuellement les participant·es
+                    </label>
+                    <div id="manualParticipantsBlock" class="subcard hidden">
+                        <p class="small">La dépense sera répartie uniquement entre les personnes cochées, au RAV ou à la moyenne selon leur paramétrage.</p>
+                        <div id="manualParticipants" class="checkbox-list"></div>
+                    </div>
+                    <button type="submit">Enregistrer la dépense</button>
+                </form>
+            </div>
+            <div class="table-wrap">
+                <table>
+                    <thead>
+                    <tr>
+                        <th>Titre</th>
+                        <th>Date</th>
+                        <th>Payeur</th>
+                        <th>Montant</th>
+                        <th>Type</th>
+                        <th>Personnes concernées</th>
+                        <th>Actions</th>
+                    </tr>
+                    </thead>
+                    <tbody id="expensesTable"></tbody>
+                </table>
+            </div>
+        </section>
+    </section>
+
+    <section id="summaryTab" class="tab-panel">
+        <section class="card">
+            <div class="card-title-row">
+                <div>
+                    <h2>Résumé et remboursements</h2>
+                    <p class="muted">Vue finale : payé, dû, solde et transferts à effectuer.</p>
+                </div>
+                <div class="actions"><button id="reloadSummaryBtn" type="button" class="secondary">Recalculer</button><button id="exportExpensesCsvBtn" type="button" class="secondary">Export dépenses CSV</button><button id="exportSummaryCsvBtn" type="button" class="secondary">Export résumé CSV</button></div>
+            </div>
+            <div class="grid two responsive">
+                <div>
+                    <h3>Soldes</h3>
+                    <div class="table-wrap">
+                        <table>
+                            <thead><tr><th>Personne</th><th>Payé</th><th>Dû</th><th>Solde</th></tr></thead>
+                            <tbody id="balancesTable"></tbody>
+                        </table>
+                    </div>
+                </div>
+                <div>
+                    <h3>Remboursements</h3>
+                    <div id="settlementsList" class="list"></div>
+                </div>
+            </div>
+        </section>
+    </section>
+
+    <section id="settingsTab" class="tab-panel">
+        <div class="grid two responsive">
+            <section class="card">
+                <h2>Paramètres du voyage</h2>
+                <dl class="details-list">
+                    <div><dt>Nom</dt><dd id="settingsTripName">—</dd></div>
+                    <div><dt>Dates</dt><dd id="settingsTripDates">—</dd></div>
+                    <div><dt>Devise</dt><dd id="settingsTripCurrency">—</dd></div>
+                </dl>
+                <p class="small">La modification des dates du voyage sera une évolution ultérieure. Pour l’instant, les dates bornent les périodes de présence et les dépenses.</p>
+            </section>
+            <section class="card">
+                <h2>Contraintes du voyage</h2>
+                <p class="muted">Liste officielle du voyage : elle évite les doublons du type “gluten free” / “sans gluten” quand ils désignent la même règle métier.</p>
+                <div id="tripConstraintList" class="badge-list"></div>
+                <div class="inline-add">
+                    <input id="newTripConstraintName" type="text" placeholder="Ex. sans porc">
+                    <button id="addTripConstraintBtn" type="button" class="secondary small-button">+ Ajouter</button>
+                </div>
+            </section>
+            <section class="card">
+                <h2>Invitations</h2>
+                <p class="muted">Crée un code pour permettre à une personne connectée de rejoindre le voyage.</p>
+                <div class="inline-add">
+                    <select id="inviteRole">
+                        <option value="PARTICIPANT">Participant</option>
+                        <option value="READ_ONLY">Lecture seule</option>
+                        <option value="ADMIN">Admin</option>
+                    </select>
+                    <button id="createInviteBtn" type="button" class="secondary small-button">+ Créer une invitation</button>
+                </div>
+                <div id="invitationList" class="list"></div>
+            </section>
+        </div>
+    </section>
+
+    <section id="profilePanel" class="tab-panel profile-panel">
+        <section class="card">
+            <div class="card-title-row">
+                <div>
+                    <h2>Profil / compte</h2>
+                    <p class="muted">Ton profil financier est séparé des voyages. Tu choisis ensuite les voyages liés à mettre à jour.</p>
+                </div>
+                <button id="closeProfilePanelBtn" type="button" class="secondary">Retour au voyage</button>
+            </div>
+        </section>
+        <div class="grid two responsive">
+            <section id="accountLoggedOutPanel" class="card compact">
+                <h2>Connexion</h2>
+                <p class="muted">Connecte-toi pour accéder à ton profil financier et rejoindre des voyages.</p>
+                <div class="grid two responsive account-auth-grid">
+                    <div class="subcard">
+                        <h3>J’ai déjà un compte</h3>
+                        <label>Email ou nom affiché
+                            <input id="loginIdentifier" type="text" placeholder="Email ou nom" autocomplete="username">
+                        </label>
+                        <label>Mot de passe
+                            <input id="loginPassword" type="password" placeholder="Mot de passe" autocomplete="current-password">
+                        </label>
+                        <button id="loginUserBtn" type="button">Se connecter</button>
+                    </div>
+                    <div class="subcard">
+                        <h3>Créer un nouveau compte</h3>
+                        <label>Email
+                            <input id="registerEmail" type="email" placeholder="prenom@example.com" autocomplete="email">
+                        </label>
+                        <label>Nom affiché
+                            <input id="registerDisplayName" type="text" placeholder="Nvoskerjen" autocomplete="name">
+                        </label>
+                        <label>Mot de passe
+                            <input id="registerPassword" type="password" placeholder="Choisissez un mot de passe" minlength="8" autocomplete="new-password">
+                        </label>
+                        <button id="createUserBtn" type="button">Créer mon compte</button>
+                    </div>
+                </div>
+            </section>
+
+            <section id="accountLoggedInPanel" class="card compact hidden">
+                <div class="card-title-row inner">
+                    <div>
+                        <h2>Compte connecté</h2>
+                        <p class="muted">Ces informations servent à t’identifier dans les voyages.</p>
+                    </div>
+                    <button id="logoutUserBtn" type="button" class="secondary">Se déconnecter</button>
+                </div>
+                <dl class="details-list compact-details">
+                    <div><dt>Email</dt><dd id="accountEmailDisplay">—</dd></div>
+                    <div><dt>Nom affiché</dt><dd id="accountDisplayNameDisplay">—</dd></div>
+                </dl>
+                <div class="actions account-actions">
+                    <button id="showAccountEditBtn" type="button" class="secondary">Modifier email / nom</button>
+                </div>
+                <form id="accountEditForm" class="stack drawer hidden">
+                    <div class="grid two">
+                        <label>Email
+                            <input id="accountEmail" type="email" required autocomplete="email">
+                        </label>
+                        <label>Nom affiché
+                            <input id="accountDisplayName" type="text" required minlength="2" maxlength="120" autocomplete="name">
+                        </label>
+                    </div>
+                    <div class="actions">
+                        <button type="submit">Enregistrer le compte</button>
+                        <button id="cancelAccountEditBtn" type="button" class="secondary">Annuler</button>
+                    </div>
+                </form>
+            </section>
+
+            <section class="card compact" id="profileCard">
+                <h2>Mon profil RAV</h2>
+                <p class="muted">Ces données servent de profil de référence. Elles ne sont appliquées aux voyages liés que sur action explicite.</p>
+                <form id="profileForm" class="stack">
+                    <div class="grid two">
+                        <label>Mode
+                            <select id="profileWeightMode">
+                                <option value="LIVING_REST">Reste à vivre</option>
+                                <option value="AVERAGE">Moyenne</option>
+                            </select>
+                        </label>
+                        <label>RAV simple
+                            <input id="profileLivingRest" type="number" min="0" step="0.01" value="1000">
+                        </label>
+                    </div>
+                    <label class="checkbox"><input id="profileAdvancedRav" type="checkbox"> Calcul avancé</label>
+                    <div id="profileAdvancedBlock" class="subcard hidden">
+                        <div class="grid two">
+                            <label>Salaire net après impôt <input id="profileNetIncomeAfterTax" type="number" min="0" step="0.01" value="0"></label>
+                            <label>Loyer <input id="profileRent" type="number" min="0" step="0.01" value="0"></label>
+                            <label>Crédits <input id="profileCredits" type="number" min="0" step="0.01" value="0"></label>
+                            <label>Charges fixes <input id="profileFixedCharges" type="number" min="0" step="0.01" value="0"></label>
+                            <label>Transport <input id="profileTransport" type="number" min="0" step="0.01" value="0"></label>
+                            <label>Assurances <input id="profileInsurance" type="number" min="0" step="0.01" value="0"></label>
+                            <label>Autres charges contraintes <input id="profileOtherMandatoryExpenses" type="number" min="0" step="0.01" value="0"></label>
+                            <label>Protections menstruelles <input id="profileMenstrualProtection" type="number" min="0" step="0.01" value="0"></label>
+                        </div>
+                    </div>
+                    <div class="inline-options">
+                        <label class="checkbox"><input id="profileVegetarian" type="checkbox"> Végétarien</label>
+                        <label class="checkbox"><input id="profileNoAlcohol" type="checkbox"> Sans alcool</label>
+                        <label class="checkbox"><input id="profileLivingRestPublic" type="checkbox"> RAV public</label>
+                    </div>
+                    <div class="field-block">
+                        <span class="field-label">Mes contraintes pour ce voyage</span>
+                        <div id="profileConstraintCheckboxes" class="checkbox-list compact-list"></div>
+                    </div>
+                    <button type="submit">Enregistrer mon profil</button>
+                </form>
+                <div id="profileApplyPanel" class="subcard profile-apply-panel hidden">
+                    <h3>Appliquer ce profil aux voyages liés</h3>
+                    <p class="small">Modifier ton profil ne met plus à jour automatiquement les personnes déjà liées. Sélectionne explicitement les voyages à mettre à jour.</p>
+                    <div id="profileLinkedTripsList" class="checkbox-list compact-list"></div>
+                    <div class="actions">
+                        <button id="applyProfileToLinkedBtn" type="button">Appliquer aux voyages sélectionnés</button>
+                        <button id="hideProfileApplyPanelBtn" type="button" class="secondary">Plus tard</button>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </section>
+
+    <section id="auditTab" class="tab-panel">
+        <section class="card">
+            <div class="card-title-row">
+                <div>
+                    <h2>Historique détaillé</h2>
+                    <p class="muted">Journal des modifications du voyage.</p>
+                </div>
+                <button id="reloadAuditBtn" type="button" class="secondary">Rafraîchir</button>
+            </div>
+            <div id="auditList" class="audit-list"></div>
+        </section>
+    </section>
+</main>
+
+<script src="/app/app.js"></script>
+</body>
+</html>

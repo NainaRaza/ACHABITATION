@@ -1,0 +1,29 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: achabitation-postgres
+    environment:
+      POSTGRES_DB: achabitation
+      POSTGRES_USER: achabitation
+      POSTGRES_PASSWORD: achabitation
+    ports:
+      - "5432:5432"
+    volumes:
+      - achabitation_pgdata:/var/lib/postgresql/data
+
+  backend:
+    build: ./backend
+    container_name: achabitation-backend
+    depends_on:
+      - postgres
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      DATABASE_URL: jdbc:postgresql://postgres:5432/achabitation
+      DATABASE_USER: achabitation
+      DATABASE_PASSWORD: achabitation
+      PORT: 8080
+    ports:
+      - "8080:8080"
+
+volumes:
+  achabitation_pgdata:

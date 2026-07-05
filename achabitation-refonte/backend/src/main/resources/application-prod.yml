@@ -1,0 +1,23 @@
+spring:
+  datasource:
+    url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/achabitation}
+    username: ${DATABASE_USER:achabitation}
+    password: ${DATABASE_PASSWORD:achabitation}
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+    properties:
+      hibernate:
+        format_sql: false
+  flyway:
+    enabled: true
+  h2:
+    console:
+      enabled: false
+server:
+  port: ${PORT:8080}
+achabitation:
+  security:
+    mode: local-session-token-prod-compatible
