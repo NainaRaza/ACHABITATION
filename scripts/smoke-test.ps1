@@ -32,7 +32,7 @@ $trip = Invoke-Json POST "$BaseUrl/trips" @{
   endDate = "2026-08-15"
   referenceCurrency = "EUR"
   customConstraints = @("Sans porc")
-} $owner.devToken
+} $owner.accessToken
 
 Write-Host "[4/10] Création participant·es"
 $sofia = Invoke-Json POST "$BaseUrl/trips/$($trip.id)/persons" @{
@@ -45,7 +45,7 @@ $sofia = Invoke-Json POST "$BaseUrl/trips/$($trip.id)/persons" @{
   livingRestPublic = $true
   customConstraints = @()
   presencePeriods = @(@{ startDate = "2026-08-01"; endDate = "2026-08-15" })
-} $owner.devToken
+} $owner.accessToken
 
 $karim = Invoke-Json POST "$BaseUrl/trips/$($trip.id)/persons" @{
   name = "Karim"
@@ -57,7 +57,7 @@ $karim = Invoke-Json POST "$BaseUrl/trips/$($trip.id)/persons" @{
   livingRestPublic = $true
   customConstraints = @("Sans porc")
   presencePeriods = @(@{ startDate = "2026-08-01"; endDate = "2026-08-15" })
-} $owner.devToken
+} $owner.accessToken
 
 Write-Host "[5/10] Création dépenses"
 Invoke-Json POST "$BaseUrl/trips/$($trip.id)/expenses" @{
@@ -73,7 +73,7 @@ Invoke-Json POST "$BaseUrl/trips/$($trip.id)/expenses" @{
   manualParticipantIds = @()
   currency = "EUR"
   exchangeRateToTripCurrency = 1
-} $owner.devToken | Out-Null
+} $owner.accessToken | Out-Null
 
 Invoke-Json POST "$BaseUrl/trips/$($trip.id)/expenses" @{
   title = "Essence mutualisée"
@@ -88,17 +88,17 @@ Invoke-Json POST "$BaseUrl/trips/$($trip.id)/expenses" @{
   manualParticipantIds = @()
   currency = "EUR"
   exchangeRateToTripCurrency = 1
-} $owner.devToken | Out-Null
+} $owner.accessToken | Out-Null
 
 Write-Host "[6/10] Résumé"
-$summary = Invoke-Json GET "$BaseUrl/trips/$($trip.id)/summary" $null $owner.devToken
+$summary = Invoke-Json GET "$BaseUrl/trips/$($trip.id)/summary" $null $owner.accessToken
 if ($summary.balances.Count -lt 2) { throw "Résumé invalide : balances insuffisantes" }
 
 Write-Host "[7/10] Invitation et contrôle membre"
 $invitation = Invoke-Json POST "$BaseUrl/trips/$($trip.id)/invitations" @{
   roleToGrant = "PARTICIPANT"
   expiresInDays = 7
-} $owner.devToken
+} $owner.accessToken
 
 $member = Invoke-Json POST "$BaseUrl/auth/register" @{
   email = "member-$stamp@example.com"
@@ -107,15 +107,15 @@ $member = Invoke-Json POST "$BaseUrl/auth/register" @{
 }
 Invoke-Json POST "$BaseUrl/trips/$($trip.id)/join" @{
   invitationCode = $invitation.code
-} $member.devToken | Out-Null
-Invoke-Json GET "$BaseUrl/trips/$($trip.id)/persons" $null $member.devToken | Out-Null
+} $member.accessToken | Out-Null
+Invoke-Json GET "$BaseUrl/trips/$($trip.id)/persons" $null $member.accessToken | Out-Null
 
 Write-Host "[8/10] Exports CSV"
-Invoke-WebRequest -Method GET -Uri "$BaseUrl/trips/$($trip.id)/exports/expenses.csv" -Headers @{ Authorization = "Bearer $($owner.devToken)" } | Out-Null
-Invoke-WebRequest -Method GET -Uri "$BaseUrl/trips/$($trip.id)/exports/summary.csv" -Headers @{ Authorization = "Bearer $($owner.devToken)" } | Out-Null
+Invoke-WebRequest -Method GET -Uri "$BaseUrl/trips/$($trip.id)/exports/expenses.csv" -Headers @{ Authorization = "Bearer $($owner.accessToken)" } | Out-Null
+Invoke-WebRequest -Method GET -Uri "$BaseUrl/trips/$($trip.id)/exports/summary.csv" -Headers @{ Authorization = "Bearer $($owner.accessToken)" } | Out-Null
 
 Write-Host "[9/10] Audit"
-$audit = Invoke-Json GET "$BaseUrl/trips/$($trip.id)/audit-logs" $null $owner.devToken
+$audit = Invoke-Json GET "$BaseUrl/trips/$($trip.id)/audit-logs" $null $owner.accessToken
 if ($audit.Count -lt 5) { throw "Audit insuffisant" }
 
 Write-Host "[10/10] Smoke test OK"

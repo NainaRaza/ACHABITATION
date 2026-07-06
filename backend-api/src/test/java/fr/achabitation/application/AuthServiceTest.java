@@ -38,6 +38,9 @@ class AuthServiceTest {
     @Mock
     private EntityMapper mapper;
 
+    @Mock
+    private SessionTokenService sessionTokenService;
+
     @InjectMocks
     private AuthService authService;
 
@@ -46,6 +49,8 @@ class AuthServiceTest {
         UUID userId = UUID.randomUUID();
         when(userRepository.existsByEmailIgnoreCase("joey@example.com")).thenReturn(false);
         when(passwordEncoder.encode("motdepassefort")).thenReturn("hashed-password");
+        when(sessionTokenService.newRawToken()).thenReturn("raw-access-token");
+        when(sessionTokenService.hashToken("raw-access-token")).thenReturn("hashed-access-token");
         when(userRepository.save(any(UserEntity.class))).thenAnswer(invocation -> {
             UserEntity user = invocation.getArgument(0);
             user.setId(userId);
@@ -60,9 +65,10 @@ class AuthServiceTest {
         assertThat(saved.getEmail()).isEqualTo("joey@example.com");
         assertThat(saved.getDisplayName()).isEqualTo("Joey");
         assertThat(saved.getPasswordHash()).isEqualTo("hashed-password");
+        assertThat(saved.getSessionTokenHash()).isEqualTo("hashed-access-token");
         assertThat(response.userId()).isEqualTo(userId);
         assertThat(response.email()).isEqualTo("joey@example.com");
-        assertThat(response.devToken()).isNotBlank();
+        assertThat(response.accessToken()).isEqualTo("raw-access-token");
     }
 
     @Test
@@ -84,6 +90,8 @@ class AuthServiceTest {
         user.setPasswordHash("hashed-password");
         when(userRepository.findByEmailIgnoreCase("joey@example.com")).thenReturn(Optional.of(user));
         when(passwordEncoder.matches("motdepassefort", "hashed-password")).thenReturn(true);
+        when(sessionTokenService.newRawToken()).thenReturn("login-access-token");
+        when(sessionTokenService.hashToken("login-access-token")).thenReturn("login-access-token-hash");
         when(userRepository.save(any(UserEntity.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         AuthResponse response = authService.login(new LoginRequest("joey@example.com", "motdepassefort"));
@@ -91,7 +99,10 @@ class AuthServiceTest {
         assertThat(response.userId()).isEqualTo(user.getId());
         assertThat(response.email()).isEqualTo("joey@example.com");
         assertThat(response.displayName()).isEqualTo("Joey");
-        assertThat(response.devToken()).isNotBlank();
+        ArgumentCaptor<UserEntity> loginUserCaptor = ArgumentCaptor.forClass(UserEntity.class);
+        verify(userRepository).save(loginUserCaptor.capture());
+        assertThat(loginUserCaptor.getValue().getSessionTokenHash()).isEqualTo("login-access-token-hash");
+        assertThat(response.accessToken()).isEqualTo("login-access-token");
     }
 
     @Test

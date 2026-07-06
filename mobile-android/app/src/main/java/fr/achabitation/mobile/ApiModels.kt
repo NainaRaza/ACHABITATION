@@ -14,7 +14,7 @@ data class AuthResponse(
     val userId: String,
     val email: String,
     val displayName: String,
-    val devToken: String,
+    val accessToken: String,
     val note: String? = null
 )
 

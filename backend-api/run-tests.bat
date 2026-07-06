@@ -1,5 +1,5 @@
 @echo off
 setlocal
 cd /d %~dp0
-mvn clean test
+.\mvnw.cmd clean test
 endlocal

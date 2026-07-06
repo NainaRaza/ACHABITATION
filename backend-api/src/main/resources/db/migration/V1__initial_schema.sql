@@ -3,7 +3,7 @@ CREATE TABLE app_user (
     email VARCHAR(320) NOT NULL UNIQUE,
     display_name VARCHAR(120) NOT NULL,
     password_hash VARCHAR(255) NOT NULL,
-    session_token VARCHAR(80),
+    session_token_hash VARCHAR(128),
     session_token_issued_at TIMESTAMP WITH TIME ZONE,
     living_rest NUMERIC(12,2),
     weight_mode VARCHAR(30),

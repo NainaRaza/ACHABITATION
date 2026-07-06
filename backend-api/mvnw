@@ -1,0 +1,38 @@
+#!/usr/bin/env sh
+set -eu
+
+MVNW_DIR="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
+MAVEN_VERSION="3.9.10"
+MAVEN_DIR="$MVNW_DIR/.mvn/apache-maven-$MAVEN_VERSION"
+MAVEN_BIN="$MAVEN_DIR/bin/mvn"
+MAVEN_ZIP="$MVNW_DIR/.mvn/apache-maven-$MAVEN_VERSION-bin.zip"
+MAVEN_URL="https://repo.maven.apache.org/maven2/org/apache/maven/apache-maven/$MAVEN_VERSION/apache-maven-$MAVEN_VERSION-bin.zip"
+
+if command -v mvn >/dev/null 2>&1; then
+  exec mvn "$@"
+fi
+
+if [ ! -x "$MAVEN_BIN" ]; then
+  mkdir -p "$MVNW_DIR/.mvn"
+  if [ ! -f "$MAVEN_ZIP" ]; then
+    echo "Maven absent du PATH. Téléchargement de Maven $MAVEN_VERSION..." >&2
+    if command -v curl >/dev/null 2>&1; then
+      curl -fsSL "$MAVEN_URL" -o "$MAVEN_ZIP"
+    elif command -v wget >/dev/null 2>&1; then
+      wget -q "$MAVEN_URL" -O "$MAVEN_ZIP"
+    else
+      echo "Erreur : mvn est absent et ni curl ni wget ne sont disponibles." >&2
+      exit 1
+    fi
+  fi
+  echo "Extraction de Maven $MAVEN_VERSION..." >&2
+  rm -rf "$MAVEN_DIR"
+  if command -v unzip >/dev/null 2>&1; then
+    unzip -q "$MAVEN_ZIP" -d "$MVNW_DIR/.mvn"
+  else
+    echo "Erreur : unzip est requis pour extraire Maven." >&2
+    exit 1
+  fi
+fi
+
+exec "$MAVEN_BIN" "$@"

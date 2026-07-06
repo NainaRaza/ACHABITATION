@@ -19,6 +19,17 @@ android {
 
     buildFeatures {
         compose = true
+        buildConfig = true
+    }
+
+    buildTypes {
+        debug {
+            buildConfigField("String", "DEFAULT_API_BASE_URL", "\"http://10.0.2.2:8080/api/v1\"")
+        }
+        release {
+            buildConfigField("String", "DEFAULT_API_BASE_URL", "\"https://api.achabitation.example/api/v1\"")
+            isMinifyEnabled = false
+        }
     }
 
     compileOptions {
@@ -45,6 +56,11 @@ dependencies {
     implementation("androidx.core:core-ktx:1.15.0")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.9.0")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.7.3")
+    implementation("androidx.security:security-crypto:1.1.0")
+
+    testImplementation("junit:junit:4.13.2")
+    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.9.0")
+    testImplementation("androidx.arch.core:core-testing:2.2.0")
 
     debugImplementation("androidx.compose.ui:ui-tooling")
 }

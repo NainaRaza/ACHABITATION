@@ -32,7 +32,7 @@ public final class AuthDtos {
             UUID userId,
             String email,
             String displayName,
-            String devToken,
+            String accessToken,
             String note
     ) {}
 

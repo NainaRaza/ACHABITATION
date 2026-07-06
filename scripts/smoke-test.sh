@@ -36,7 +36,7 @@ api GET "$BASE_URL/health/readiness" >/dev/null
 
 echo "[2/9] Création compte owner"
 OWNER_JSON=$(api POST "$BASE_URL/auth/register" "" "{\"email\":\"owner-$STAMP@example.com\",\"displayName\":\"Owner Beta\",\"password\":\"motdepassefort\"}")
-OWNER_TOKEN=$(printf '%s' "$OWNER_JSON" | json_field devToken)
+OWNER_TOKEN=$(printf '%s' "$OWNER_JSON" | json_field accessToken)
 
 echo "[3/9] Création voyage"
 TRIP_JSON=$(api POST "$BASE_URL/trips" "$OWNER_TOKEN" "{\"name\":\"Smoke test $STAMP\",\"startDate\":\"2026-08-01\",\"endDate\":\"2026-08-15\",\"referenceCurrency\":\"EUR\",\"customConstraints\":[\"Sans porc\"]}")
@@ -59,7 +59,7 @@ echo "[7/9] Invitation"
 INV_JSON=$(api POST "$BASE_URL/trips/$TRIP_ID/invitations" "$OWNER_TOKEN" '{"roleToGrant":"PARTICIPANT","expiresInDays":7}')
 INV_CODE=$(printf '%s' "$INV_JSON" | json_field code)
 MEMBER_JSON=$(api POST "$BASE_URL/auth/register" "" "{\"email\":\"member-$STAMP@example.com\",\"displayName\":\"Member Beta\",\"password\":\"motdepassefort\"}")
-MEMBER_TOKEN=$(printf '%s' "$MEMBER_JSON" | json_field devToken)
+MEMBER_TOKEN=$(printf '%s' "$MEMBER_JSON" | json_field accessToken)
 api POST "$BASE_URL/trips/$TRIP_ID/join" "$MEMBER_TOKEN" "{\"invitationCode\":\"$INV_CODE\"}" >/dev/null
 api GET "$BASE_URL/trips/$TRIP_ID/persons" "$MEMBER_TOKEN" >/dev/null
 

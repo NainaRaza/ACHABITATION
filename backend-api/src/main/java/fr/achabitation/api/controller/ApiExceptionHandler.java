@@ -9,6 +9,7 @@ import org.springframework.security.authentication.AuthenticationCredentialsNotF
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.time.Instant;
 import java.util.List;
@@ -46,6 +47,14 @@ public class ApiExceptionHandler {
                 .map(v -> v.getPropertyPath() + " : " + v.getMessage())
                 .toList();
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ApiError(Instant.now(), 400, "Validation failed", details));
+    }
+
+
+    @ExceptionHandler(ResponseStatusException.class)
+    public ResponseEntity<ApiError> responseStatus(ResponseStatusException ex) {
+        int status = ex.getStatusCode().value();
+        String reason = ex.getReason() == null ? ex.getMessage() : ex.getReason();
+        return ResponseEntity.status(ex.getStatusCode()).body(new ApiError(Instant.now(), status, ex.getStatusCode().toString(), List.of(reason)));
     }
 
     @ExceptionHandler(DataIntegrityViolationException.class)

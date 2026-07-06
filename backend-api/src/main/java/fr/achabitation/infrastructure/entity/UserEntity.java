@@ -34,8 +34,8 @@ public class UserEntity {
     @Column(nullable = false)
     private String passwordHash;
 
-    @Column(length = 80)
-    private String sessionToken;
+    @Column(name = "session_token_hash", length = 128)
+    private String sessionTokenHash;
 
     private Instant sessionTokenIssuedAt;
 
@@ -103,8 +103,8 @@ public class UserEntity {
     public void setDisplayName(String displayName) { this.displayName = displayName; }
     public String getPasswordHash() { return passwordHash; }
     public void setPasswordHash(String passwordHash) { this.passwordHash = passwordHash; }
-    public String getSessionToken() { return sessionToken; }
-    public void setSessionToken(String sessionToken) { this.sessionToken = sessionToken; }
+    public String getSessionTokenHash() { return sessionTokenHash; }
+    public void setSessionTokenHash(String sessionTokenHash) { this.sessionTokenHash = sessionTokenHash; }
     public Instant getSessionTokenIssuedAt() { return sessionTokenIssuedAt; }
     public void setSessionTokenIssuedAt(Instant sessionTokenIssuedAt) { this.sessionTokenIssuedAt = sessionTokenIssuedAt; }
     public BigDecimal getLivingRest() { return livingRest; }

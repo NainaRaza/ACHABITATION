@@ -20,4 +20,4 @@ server:
   port: ${PORT:8080}
 achabitation:
   security:
-    mode: local-session-token-prod-compatible
+    mode: opaque-access-token

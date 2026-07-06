@@ -177,6 +177,25 @@ class AchabitationApiIntegrationTest {
                 .andExpect(status().isForbidden());
     }
 
+
+    @Test
+    void logoutInvalidatesAccessToken() throws Exception {
+        AuthSession owner = registerUser("logout-owner@example.com");
+        UUID tripId = createTrip(owner);
+
+        mockMvc.perform(get("/api/v1/trips/{tripId}/persons", tripId)
+                        .header(HttpHeaders.AUTHORIZATION, bearer(owner)))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(post("/api/v1/auth/logout")
+                        .header(HttpHeaders.AUTHORIZATION, bearer(owner)))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(get("/api/v1/trips/{tripId}/persons", tripId)
+                        .header(HttpHeaders.AUTHORIZATION, bearer(owner)))
+                .andExpect(status().isUnauthorized());
+    }
+
     @Test
     void invitationJoinGuestLinkingAndPrivateRavAreControlled() throws Exception {
         AuthSession owner = registerUser("privacy-owner@example.com");
@@ -469,10 +488,10 @@ class AchabitationApiIntegrationTest {
                                 """.formatted(email)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.userId").exists())
-                .andExpect(jsonPath("$.devToken").exists())
+                .andExpect(jsonPath("$.accessToken").exists())
                 .andReturn();
         JsonNode auth = read(result);
-        return new AuthSession(UUID.fromString(auth.get("userId").asText()), auth.get("devToken").asText());
+        return new AuthSession(UUID.fromString(auth.get("userId").asText()), auth.get("accessToken").asText());
     }
 
     private UUID createTrip(AuthSession owner) throws Exception {

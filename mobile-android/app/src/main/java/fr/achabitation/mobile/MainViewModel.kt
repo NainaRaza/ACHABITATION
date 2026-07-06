@@ -1,7 +1,6 @@
 package fr.achabitation.mobile
 
 import android.app.Application
-import android.content.Context
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -14,7 +13,7 @@ data class AppUiState(
     val loading: Boolean = false,
     val message: String? = null,
     val error: String? = null,
-    val baseUrl: String = "http://10.0.2.2:8080/api/v1",
+    val baseUrl: String = BuildConfig.DEFAULT_API_BASE_URL,
     val auth: AuthResponse? = null,
     val profile: UserProfileResponse? = null,
     val trips: List<TripResponse> = emptyList(),
@@ -25,7 +24,8 @@ data class AppUiState(
     val invitations: List<TripInvitationResponse> = emptyList(),
     val auditLogs: List<AuditLogResponse> = emptyList(),
     val exportPreview: ExportPreview? = null,
-    val selectedTab: TripTab = TripTab.Overview
+    val selectedTab: TripTab = TripTab.Overview,
+    val sessionExpired: Boolean = false
 )
 
 data class ExportPreview(
@@ -43,11 +43,11 @@ enum class TripTab(val label: String) {
 }
 
 class MainViewModel(application: Application) : AndroidViewModel(application) {
-    private val prefs = application.getSharedPreferences("achabitation-mobile", Context.MODE_PRIVATE)
+    private val prefs = SecurePreferences.open(application)
 
     var state by mutableStateOf(
         AppUiState(
-            baseUrl = prefs.getString("baseUrl", "http://10.0.2.2:8080/api/v1") ?: "http://10.0.2.2:8080/api/v1",
+            baseUrl = prefs.getString("baseUrl", BuildConfig.DEFAULT_API_BASE_URL) ?: BuildConfig.DEFAULT_API_BASE_URL,
             auth = readAuth()
         )
     )
@@ -55,7 +55,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     private val api = AchabitationApi(
         baseUrlProvider = { state.baseUrl },
-        tokenProvider = { state.auth?.devToken }
+        tokenProvider = { state.auth?.accessToken }
     )
 
     init {
@@ -63,12 +63,22 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun updateBaseUrl(value: String) {
-        state = state.copy(baseUrl = value)
-        prefs.edit().putString("baseUrl", value).apply()
+        val sanitized = value.trim()
+        if (!BuildConfig.DEBUG && sanitized.startsWith("http://", ignoreCase = true)) {
+            state = state.copy(error = "En version release, l’URL API doit être en HTTPS.", message = null)
+            return
+        }
+        state = state.copy(baseUrl = sanitized)
+        prefs.edit().putString("baseUrl", sanitized).apply()
     }
 
     fun clearMessage() {
         state = state.copy(message = null, error = null)
+    }
+
+    fun acknowledgeSessionExpired() {
+        clearAuthLocal()
+        state = AppUiState(baseUrl = state.baseUrl, error = null, message = null, sessionExpired = false)
     }
 
     fun clearExportPreview() {
@@ -110,7 +120,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun logout() {
-        prefs.edit().remove("userId").remove("email").remove("displayName").remove("devToken").remove("selectedTripId").apply()
+        clearAuthLocal()
         state = AppUiState(baseUrl = state.baseUrl, message = "Déconnexion effectuée.")
     }
 
@@ -307,7 +317,17 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 block()
                 state = state.copy(loading = false, message = successMessage, error = null)
             } catch (ex: Exception) {
-                state = state.copy(loading = false, error = ex.message ?: ex::class.java.simpleName, message = null)
+                if (ex is ApiException && ex.status == 401) {
+                    clearAuthLocal()
+                    state = AppUiState(
+                        baseUrl = state.baseUrl,
+                        loading = false,
+                        error = "Session expirée. Reconnecte-toi.",
+                        sessionExpired = true
+                    )
+                } else {
+                    state = state.copy(loading = false, error = userFacingError(ex), message = null)
+                }
             }
         }
     }
@@ -349,16 +369,33 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             .putString("userId", auth.userId)
             .putString("email", auth.email)
             .putString("displayName", auth.displayName)
-            .putString("devToken", auth.devToken)
+            .putString("accessToken", auth.accessToken)
             .apply()
+    }
+
+    private fun clearAuthLocal() {
+        prefs.edit()
+            .remove("userId")
+            .remove("email")
+            .remove("displayName")
+            .remove("accessToken")
+            .remove("selectedTripId")
+            .apply()
+    }
+
+    private fun userFacingError(ex: Exception): String = when (ex) {
+        is java.net.UnknownHostException -> "Serveur introuvable. Vérifie l’URL API et ta connexion réseau."
+        is java.net.SocketTimeoutException -> "Le serveur ne répond pas. Réessaie ou vérifie que le backend est lancé."
+        is java.net.ConnectException -> "Connexion impossible au backend. Vérifie que le serveur est démarré et accessible."
+        else -> ex.message ?: ex::class.java.simpleName
     }
 
     private fun readAuth(): AuthResponse? {
         val userId = prefs.getString("userId", null) ?: return null
         val email = prefs.getString("email", null) ?: return null
         val displayName = prefs.getString("displayName", null) ?: return null
-        val token = prefs.getString("devToken", null) ?: return null
-        return AuthResponse(userId = userId, email = email, displayName = displayName, devToken = token)
+        val token = prefs.getString("accessToken", null) ?: return null
+        return AuthResponse(userId = userId, email = email, displayName = displayName, accessToken = token)
     }
 }
 

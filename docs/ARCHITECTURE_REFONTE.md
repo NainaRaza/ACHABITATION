@@ -1,199 +1,134 @@
-# Architecture refondue ACHABITATION
+# Architecture refonte ACHABITATION
 
 ## Objectif
 
-La refonte architecturale sépare le projet en plusieurs applications distinctes :
+La refonte sépare l’application en clients et serveur :
 
 ```text
-backend-api      serveur central et règles métier
-frontend-web     client web
-mobile-android   futur client Android
-mobile-ios       futur client iOS
+frontend-web      ┐
+mobile-android    ├──> backend-api ──> base de données
+mobile-ios futur  ┘
 ```
 
-Le principe est que le backend porte la vérité métier et expose une API REST. Les interfaces ne doivent pas dupliquer les calculs ni les droits : elles consomment les endpoints du backend.
+Le backend concentre les données, les droits et les calculs. Les clients affichent l’interface, collectent les saisies et appellent l’API.
 
-## Structure cible du dépôt
+## Modules du dépôt
 
 ```text
-achabitation-refonte/
-├── backend-api/
-│   ├── pom.xml
-│   ├── Dockerfile
-│   ├── src/main/java/fr/achabitation/
-│   │   ├── api/
-│   │   ├── application/
-│   │   ├── config/
-│   │   ├── domain/
-│   │   └── infrastructure/
-│   ├── src/main/resources/
-│   └── src/test/
-│
-├── frontend-web/
-│   ├── index.html
-│   ├── app.js
-│   ├── styles.css
-│   ├── run-web.bat
-│   └── run-web.sh
-│
-├── mobile-android/
-│   └── README.md
-│
-├── mobile-ios/
-│   └── README.md
-│
-├── desktop-legacy/
-│   └── ancienne application Swing
-│
-├── docs/
-│   └── documentation projet
-│
-├── infra/
-│   └── docker-compose.yml
-│
-└── scripts/
-    └── smoke tests
+backend-api/       API Spring Boot, sécurité, persistance, calculs, exports, audit
+frontend-web/      client web local HTML/CSS/JavaScript
+mobile-android/    client Android Kotlin / Jetpack Compose
+mobile-ios/        dossier réservé au futur client iOS
+desktop-legacy/    ancien client Java Swing conservé comme référence historique
+docs/              documentation technique et fonctionnelle
+infra/             docker-compose PostgreSQL + backend-api
+scripts/           smoke tests API
 ```
 
-## Flux général
+## Backend
+
+Le backend est organisé en couches :
 
 ```text
-Navigateur web
-    ↓ HTTP REST
-backend-api
-    ↓ JPA
-Base H2 ou PostgreSQL
+fr/achabitation/api             contrôleurs REST et DTO
+fr/achabitation/application     services applicatifs
+fr/achabitation/config          sécurité, CORS, filtre token
+fr/achabitation/domain          modèle métier pur et calcul RAV
+fr/achabitation/infrastructure  entités JPA et repositories
 ```
 
-Plus tard :
+### Couche `domain`
 
-```text
-Android       ┐
-iOS           ├── HTTP REST → backend-api → PostgreSQL
-Frontend web  ┘
-```
+La couche domaine ne dépend pas de Spring. Elle contient les règles de calcul : personnes actives, dates de présence, dépenses normales/globales/avancées, exclusions viande/alcool/contraintes, RAV classique, poids moyen, devises, soldes et remboursements.
 
-## Backend API
+### Couche `application`
 
-Le backend est une application Spring Boot. Il contient :
+Les services applicatifs orchestrent les cas d’usage :
 
-- l’authentification ;
-- les rôles ;
-- les invitations ;
-- la gestion des voyages ;
-- la gestion des personnes et guests ;
-- les dépenses ;
-- les contraintes de voyage ;
-- le calcul RAV ;
-- le résumé ;
-- les remboursements ;
-- les exports CSV ;
-- l’historique ;
-- les validations métier ;
-- la persistance.
+- `AuthService` : comptes, login, logout, profil utilisateur, propagation du profil ;
+- `TripService` : voyages, contraintes du voyage, invitations, adhésion ;
+- `PersonService` : guests, personnes liées, présences, confidentialité RAV ;
+- `ExpenseService` : création, modification, validation et suppression des dépenses ;
+- `SummaryService` : appel au moteur de calcul et construction du résumé ;
+- `ExportService` : exports CSV ;
+- `AuditService` et `AuditQueryService` : journalisation et lecture de l’historique ;
+- `AuthorizationService` : contrôles d’accès par rôle et propriété du profil ;
+- `SessionTokenService` : génération et hash des tokens opaques ;
+- `LoginRateLimiter` : limitation mémoire des tentatives de login/register.
 
-Il ne contient plus les fichiers de l’interface web.
+### Couche `api`
+
+Les contrôleurs exposent les endpoints REST sous `/api/v1`. Les DTO sont placés dans `fr/achabitation/api/dto` et constituent le contrat consommé par le web et Android.
+
+### Couche `infrastructure`
+
+La persistance utilise Spring Data JPA. En local, la base est H2 fichier. En profil `prod`, le backend utilise PostgreSQL avec Flyway.
+
+## Sécurité
+
+Le modèle de sécurité actuel est adapté à une bêta locale fermée :
+
+- inscription et login publics ;
+- routes applicatives protégées par `Authorization: Bearer <accessToken>` ;
+- token brut non stocké en base ;
+- hash SHA-256 stocké dans `app_user.session_token_hash` ;
+- validité actuelle du token : 30 jours ;
+- endpoint logout serveur ;
+- rate limiting mémoire sur login/register ;
+- rôles de voyage : `OWNER`, `ADMIN`, `PARTICIPANT`, `READ_ONLY`.
+
+Ce modèle doit être durci avant exposition publique. Les actions à mener sont dans `PROD_READY_CHECKLIST.md`.
 
 ## Frontend web
 
-Le frontend web est une application HTML/CSS/JavaScript sans framework.
+Le frontend web est une application sans framework située dans `frontend-web/`. Le fichier `app.js` est un point d’entrée court ; la logique est répartie dans `src/` : `api`, `state`, `auth`, `profile`, `trips`, `persons`, `expenses`, `summary`, `invitations`, `audit`, `constraints`, `form-helpers`, `render`, `ui` et `utils`.
 
-Il est volontairement séparé dans `frontend-web/`. Il appelle par défaut :
+Le frontend est servi séparément du backend sur `http://localhost:5173` et appelle `http://localhost:8080/api/v1`.
 
-```text
-http://localhost:8080/api/v1
-```
+## Android
 
-Il ne doit pas contenir de règles métier critiques. Les validations côté écran ne sont là que pour améliorer l’expérience utilisateur.
+`mobile-android/` contient un client Kotlin / Jetpack Compose. Le token est stocké via `EncryptedSharedPreferences`. Le HTTP cleartext est autorisé en debug pour le backend local et refusé en release.
 
-## Mobile Android / iOS
-
-Les dossiers `mobile-android/` et `mobile-ios/` sont préparés pour la suite.
-
-Les applications mobiles devront consommer l’API REST de `backend-api`.
-
-Règle importante : le calcul RAV ne doit pas être recodé côté mobile. Le backend doit rester l’autorité.
-
-## Séparation des responsabilités
-
-### Backend API
-
-Responsable de :
-
-- droits ;
-- sécurité ;
-- validation ;
-- calcul ;
-- données ;
-- exports ;
-- historique.
-
-### Frontend web
-
-Responsable de :
-
-- affichage ;
-- formulaires ;
-- navigation ;
-- messages utilisateur ;
-- appels API.
-
-### Mobile
-
-Responsable de :
-
-- expérience mobile ;
-- appels API ;
-- stockage local éventuel de session ;
-- notifications futures éventuelles.
-
-## Configuration locale
-
-Backend :
-
-```bash
-cd backend-api
-mvn spring-boot:run
-```
-
-Frontend :
-
-```bash
-cd frontend-web
-./run-web.sh
-```
-
-URL frontend :
+Structure principale :
 
 ```text
-http://localhost:5173
+MainActivity.kt          shell applicatif, drawer, top bar
+AuthScreen.kt            connexion, inscription, session expirée
+HomeScreen.kt            accueil, voyages, compte, profil
+TripScreen.kt            détail de voyage et navigation interne
+PersonsScreen.kt         personnes, guests, rattachement compte
+ExpensesScreen.kt        dépenses et formulaire guidé
+SummaryScreen.kt         soldes, remboursements, exports
+InvitationsScreen.kt     codes d'invitation
+AuditScreen.kt           journal d'audit
+MainViewModel.kt         état écran et orchestration API
+AchabitationApi.kt       client HTTP REST
+ApiModels.kt             DTO alignés sur le backend
+SecurePreferences.kt     stockage local chiffré
 ```
 
-URL API :
+## iOS et desktop legacy
 
-```text
-http://localhost:8080/api/v1
-```
+`mobile-ios/` est un emplacement réservé. La cible prévue est un client qui consomme la même API REST, sans recoder les calculs RAV.
 
-## Docker
+`desktop-legacy/` contient l’ancien client Swing. Il sert uniquement de référence historique.
 
-La configuration Docker est dans :
+## Flux principal
 
-```text
-infra/docker-compose.yml
-```
+1. Un utilisateur crée un compte ou se connecte.
+2. Il crée un voyage ou rejoint un voyage par code d’invitation.
+3. Il crée des personnes guests, lie son compte à un guest ou ajoute son compte directement comme personne.
+4. Il saisit les RAV, les contraintes et les périodes de présence.
+5. Il saisit les dépenses.
+6. Le backend calcule les soldes et remboursements.
+7. Les clients affichent le résumé, les exports et l’audit.
 
-Lancement :
+## Limites assumées
 
-```bash
-docker compose -f infra/docker-compose.yml up --build
-```
-
-## Avantages de la nouvelle architecture
-
-- le backend devient un vrai serveur API ;
-- le frontend web peut évoluer indépendamment ;
-- Android et iOS pourront être ajoutés sans refondre le serveur ;
-- les tests backend restent concentrés sur les règles métier ;
-- le déploiement est plus clair ;
-- la documentation distingue mieux serveur, clients et infra.
+- Pas encore de CI Android.
+- Pas de tests E2E navigateur.
+- Pas de refresh token.
+- Rate limiting non distribué.
+- Pas de reverse proxy documenté pour production.
+- Pas d’application iOS.
+- Pas de mode hors-ligne mobile.

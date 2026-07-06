@@ -32,12 +32,14 @@ public class AuthService {
     private final PersonRepository personRepository;
     private final PasswordEncoder passwordEncoder;
     private final EntityMapper mapper;
+    private final SessionTokenService sessionTokenService;
 
-    public AuthService(UserRepository userRepository, PersonRepository personRepository, PasswordEncoder passwordEncoder, EntityMapper mapper) {
+    public AuthService(UserRepository userRepository, PersonRepository personRepository, PasswordEncoder passwordEncoder, EntityMapper mapper, SessionTokenService sessionTokenService) {
         this.userRepository = userRepository;
         this.personRepository = personRepository;
         this.passwordEncoder = passwordEncoder;
         this.mapper = mapper;
+        this.sessionTokenService = sessionTokenService;
     }
 
     private String normalizedEmail(String email) {
@@ -83,10 +85,11 @@ public class AuthService {
         user.setEmail(email);
         user.setDisplayName(displayName);
         user.setPasswordHash(passwordEncoder.encode(request.password()));
-        user.setSessionToken(UUID.randomUUID().toString());
+        String rawToken = sessionTokenService.newRawToken();
+        user.setSessionTokenHash(sessionTokenService.hashToken(rawToken));
         user.setSessionTokenIssuedAt(Instant.now());
         user = userRepository.save(user);
-        return toAuthResponse(user, "Compte créé. Token de développement mémorisé côté backend.");
+        return toAuthResponse(user, rawToken, "Compte créé. Session ouverte.");
     }
 
     @Transactional
@@ -95,10 +98,11 @@ public class AuthService {
         if (!passwordEncoder.matches(request.password(), user.getPasswordHash())) {
             throw new IllegalArgumentException("Identifiants invalides.");
         }
-        user.setSessionToken(UUID.randomUUID().toString());
+        String rawToken = sessionTokenService.newRawToken();
+        user.setSessionTokenHash(sessionTokenService.hashToken(rawToken));
         user.setSessionTokenIssuedAt(Instant.now());
         user = userRepository.save(user);
-        return toAuthResponse(user, "Connexion validée. Token temporaire de développement, à remplacer par JWT avant production.");
+        return toAuthResponse(user, rawToken, "Connexion validée. Session ouverte.");
     }
 
     @Transactional
@@ -115,7 +119,14 @@ public class AuthService {
         user.setEmail(email);
         user.setDisplayName(displayName);
         UserEntity savedUser = userRepository.save(user);
-        return toAuthResponse(savedUser, "Compte mis à jour.");
+        return toAuthResponse(savedUser, null, "Compte mis à jour.");
+    }
+
+    @Transactional
+    public void logout(UserEntity user) {
+        user.setSessionTokenHash(null);
+        user.setSessionTokenIssuedAt(null);
+        userRepository.save(user);
     }
 
     @Transactional(readOnly = true)
@@ -279,8 +290,8 @@ public class AuthService {
         }
     }
 
-    private AuthResponse toAuthResponse(UserEntity user, String note) {
-        return new AuthResponse(user.getId(), user.getEmail(), user.getDisplayName(), user.getSessionToken(), note);
+    private AuthResponse toAuthResponse(UserEntity user, String rawAccessToken, String note) {
+        return new AuthResponse(user.getId(), user.getEmail(), user.getDisplayName(), rawAccessToken, note);
     }
 
     private List<LinkedProfilePersonResponse> linkedPersons(UserEntity user) {

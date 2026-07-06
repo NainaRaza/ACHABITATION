@@ -1,112 +1,107 @@
-# ACHABITATION — Checklist MVP bêta
+# Checklist MVP bêta
 
-Ce document définit le niveau minimal attendu avant de faire tester l'application par un petit groupe de personnes réelles.
+Cette checklist décrit l’état attendu pour considérer le projet utilisable en bêta locale fermée.
 
-## Statut visé
+## Backend
 
-Le projet est considéré comme prêt pour une bêta fermée lorsque les points suivants sont vrais :
+- [x] API Spring Boot séparée du frontend.
+- [x] Maven Wrapper disponible.
+- [x] Java 21 configuré.
+- [x] Base H2 locale de développement.
+- [x] Profil `prod` PostgreSQL.
+- [x] Migration initiale Flyway.
+- [x] Healthcheck et readiness database.
+- [x] Authentification par `accessToken` opaque.
+- [x] Token brut non stocké en base.
+- [x] Logout serveur.
+- [x] Rate limiting mémoire sur login/register.
+- [x] Rôles de voyage.
+- [x] Contrôles d’accès par appartenance et rôle.
+- [x] Profil utilisateur central.
+- [x] Confidentialité du RAV.
+- [x] Guests et liaison à un compte.
+- [x] Création directe du compte courant comme personne du voyage.
+- [x] Contraintes personnalisées déclarées au niveau du voyage.
+- [x] Dépenses normales, globales et avancées.
+- [x] Devise et taux de conversion vers la devise du voyage.
+- [x] Résumé des soldes.
+- [x] Remboursements suggérés.
+- [x] Exports CSV.
+- [x] Audit logs.
+- [x] Tests backend unitaires et intégration.
+- [x] Smoke tests API.
 
-- les tests automatisés passent avec `mvn clean test` ;
-- le backend démarre en local avec H2 ;
-- le backend démarre avec Docker + PostgreSQL ;
-- le smoke test API passe ;
-- l'interface web permet un scénario complet sans appel manuel à l'API ;
-- les droits d'accès principaux sont bloqués côté backend ;
-- aucune donnée financière privée n'est renvoyée directement à un autre compte ;
-- les exports CSV fonctionnent ;
-- les erreurs métier sont lisibles.
+## Frontend web
 
-## Commandes de validation
+- [x] Dossier séparé `frontend-web/`.
+- [x] `app.js` réduit à un point d’entrée.
+- [x] Modules fonctionnels dans `frontend-web/src/`.
+- [x] Configuration API surchargeable.
+- [x] Inscription / connexion / logout.
+- [x] Session expirée gérée côté API/front.
+- [x] Profil utilisateur.
+- [x] Création et sélection de voyage.
+- [x] Rejoindre un voyage par code.
+- [x] Gestion des contraintes de voyage.
+- [x] Personnes, guests et liaison compte.
+- [x] Ajout direct du compte courant comme personne.
+- [x] Dépenses.
+- [x] Résumé.
+- [x] Invitations.
+- [x] Audit.
+- [x] Exports CSV.
+- [x] Tests Node de syntaxe et de parcours mocké.
 
-Depuis `achabitation-refonte/backend-api` :
+## Android
 
-```bash
-mvn clean test
-mvn spring-boot:run
-```
+- [x] Client Android Kotlin / Jetpack Compose présent.
+- [x] Gradle Wrapper présent.
+- [x] Gradle 8.9.
+- [x] Android Gradle Plugin 8.7.3.
+- [x] URL API locale par défaut sur émulateur : `10.0.2.2`.
+- [x] Configuration possible de l’URL API.
+- [x] Authentification.
+- [x] Stockage chiffré via `EncryptedSharedPreferences`.
+- [x] Cleartext HTTP autorisé en debug uniquement.
+- [x] Cleartext refusé en release.
+- [x] Écran session expirée.
+- [x] Voyages, personnes, dépenses, résumé, invitations, audit.
+- [x] Exports CSV en aperçu copiable.
+- [x] Confirmations sur actions destructrices principales.
+- [x] Tests unitaires Android basiques.
 
-Dans un second terminal, depuis `achabitation-refonte` :
+## Documentation
 
-```powershell
-.\scripts\smoke-test.ps1
-```
+- [x] README racine à jour.
+- [x] Documentation backend à jour.
+- [x] Documentation front-web à jour.
+- [x] Documentation Android à jour.
+- [x] Documentation API avec exemples.
+- [x] Documentation sécurité bêta.
+- [x] Checklist production séparée.
+- [x] Ancien desktop documenté comme legacy.
 
-ou sous Linux/macOS/Git Bash :
+## Points bloquants avant bêta fermée réelle
 
-```bash
-./scripts/smoke-test.sh
-```
+- [ ] Lancer manuellement le parcours complet backend + web sur une base H2 fraîche.
+- [ ] Lancer manuellement le parcours complet Android sur émulateur.
+- [ ] Vérifier `./mvnw clean test` sur une machine propre.
+- [ ] Vérifier `frontend-web/run-tests.sh` sur une machine propre.
+- [ ] Vérifier `mobile-android/gradlew clean assembleDebug` sur une machine propre.
+- [ ] Tester l’invitation avec deux comptes réels.
+- [ ] Tester les droits `READ_ONLY` dans l’interface.
+- [ ] Tester le masquage du RAV privé dans web et Android.
+- [ ] Tester une session expirée ou un token invalidé.
+- [ ] Vérifier que les messages d’erreur sont compréhensibles pour un utilisateur non technique.
 
-Pour tester PostgreSQL + Docker :
+## Hors périmètre MVP bêta
 
-```bash
-docker compose -f infra/docker-compose.yml up --build
-```
-
-Puis relancer le smoke test contre le backend Docker :
-
-```bash
-./scripts/smoke-test.sh http://localhost:8080/api/v1
-```
-
-## Scénario manuel minimal dans l'interface
-
-Ouvrir :
-
-```text
-http://localhost:5173
-```
-
-Valider le scénario suivant :
-
-1. créer un compte owner ;
-2. créer un voyage ;
-3. ajouter une contrainte de voyage ;
-4. créer deux guests ;
-5. créer une dépense normale avec viande, alcool et contrainte ;
-6. créer une dépense globale ;
-7. vérifier les personnes concernées ;
-8. vérifier le résumé ;
-9. exporter les CSV ;
-10. créer une invitation ;
-11. créer un second compte ;
-12. rejoindre le voyage avec l'invitation ;
-13. lier ce compte à un guest sans appliquer automatiquement le profil ;
-14. modifier le profil ;
-15. appliquer le profil explicitement au voyage lié ;
-16. vérifier que le RAV privé est masqué pour l'autre compte ;
-17. vérifier l'historique.
-
-## Ce qui reste hors bêta
-
-Les éléments suivants ne bloquent pas la bêta fermée mais bloquent une vraie production publique :
-
-- reset de mot de passe par email ;
-- suppression complète de compte et export RGPD complet ;
-- supervision et alerting ;
-- sauvegardes automatisées ;
-- audit sécurité externe ;
-- application mobile native ;
-- OCR tickets de caisse ;
-- multi-devises automatique via API de change.
-
-## Critère de go / no-go
-
-Go bêta si :
-
-```text
-mvn clean test = SUCCESS
-smoke-test = SUCCESS
-scénario manuel = SUCCESS
-aucune erreur 500 pendant le parcours nominal
-```
-
-No-go si :
-
-```text
-un endpoint sensible répond sans token
-un utilisateur non membre lit un voyage
-un RAV privé apparaît dans une réponse destinée à un autre compte
-un scénario nominal déclenche une erreur 500
-les exports ne se téléchargent pas
-```
+- [ ] Production publique.
+- [ ] Application iOS.
+- [ ] Mode hors-ligne.
+- [ ] OCR de tickets de caisse.
+- [ ] Export PDF.
+- [ ] Export Excel natif.
+- [ ] Multi-devises avec taux automatiques.
+- [ ] Notifications.
+- [ ] Gestion fine des suppressions définitives et RGPD complet.

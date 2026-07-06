@@ -1,16 +1,14 @@
 # Frontend web ACHABITATION
 
-Ce dossier contient l'interface web locale séparée du backend.
-
-Le frontend est actuellement une application HTML/CSS/JavaScript sans framework. Elle appelle l'API REST exposée par `backend-api`.
+Ce dossier contient l’interface web locale séparée du backend. Le frontend est une application HTML/CSS/JavaScript sans framework qui consomme l’API REST exposée par `backend-api`.
 
 ## Lancement local
 
-Terminal 1 : lancer l'API.
+Terminal 1 : lancer l’API.
 
 ```bash
 cd ../backend-api
-mvn spring-boot:run
+./mvnw spring-boot:run
 ```
 
 Terminal 2 : servir le frontend web.
@@ -41,7 +39,7 @@ Par défaut, le frontend appelle :
 http://localhost:8080/api/v1
 ```
 
-La constante est définie dans `app.js` via `API_BASE_URL`. Elle peut être surchargée par :
+La constante est définie dans `src/api.js` via `API_BASE_URL`. Elle peut être surchargée par :
 
 ```js
 window.ACHABITATION_API_BASE_URL
@@ -53,17 +51,69 @@ ou par le localStorage :
 localStorage.setItem("achabitation.apiBaseUrl", "http://localhost:8080/api/v1")
 ```
 
-## Règle d'architecture
+## Organisation du code
 
-Le frontend ne doit pas contenir de logique métier critique. Les validations ergonomiques peuvent exister côté écran, mais les règles d'autorité restent dans `backend-api`.
+```text
+app.js              point d’entrée léger et installation des modules
+src/api.js         appels HTTP, erreur 401, exports blob
+src/state.js       état courant + localStorage
+src/ui.js          messages utilisateur
+src/utils.js       formatage dates/montants/contraintes
+src/auth.js        connexion, inscription, compte, logout
+src/profile.js     profil RAV et propagation aux personnes liées
+src/trips.js       voyages, sélection, dashboard, exports
+src/persons.js     personnes, guests, liaison compte, présences
+src/expenses.js    dépenses, participants concernés, formulaires
+src/summary.js     soldes et remboursements
+src/invitations.js invitations et révocation
+src/audit.js       historique
+src/constraints.js contraintes personnalisées du voyage
+src/form-helpers.js helpers de formulaires
+src/render.js      navigation, rendu global, bind events
+```
 
-## Parcours d'ajout de soi-même
+`app.js` est réduit à un point d’entrée. La logique fonctionnelle est répartie dans les modules `src/`.
 
-Depuis l'onglet **Participant·es**, le bouton **+ M’ajouter moi-même** appelle l'API `POST /api/v1/trips/{tripId}/persons/current-user`.
+## Parcours couverts
 
-Après avoir rejoint un voyage avec un code d'invitation, l'interface affiche aussi un bloc de rattachement permettant :
+- inscription et connexion ;
+- logout serveur ;
+- session expirée ;
+- compte et profil utilisateur ;
+- création, sélection et adhésion à un voyage ;
+- contraintes personnalisées du voyage ;
+- invitations ;
+- création de guests ;
+- ajout direct du compte courant comme personne ;
+- liaison d’un guest au compte courant ;
+- dépenses normales, globales et avancées ;
+- résumé des soldes ;
+- exports CSV ;
+- audit logs.
 
-- de choisir un guest existant avec **C’est moi** ;
-- ou de créer directement une nouvelle personne liée au compte connecté.
+## Tests frontend
 
-Ce parcours évite de devoir créer manuellement un guest puis de le lier au compte.
+Deux tests JavaScript sans navigateur externe sont fournis.
+
+Linux/macOS :
+
+```bash
+./run-tests.sh
+```
+
+Windows :
+
+```bat
+run-tests.bat
+```
+
+Le script exécute :
+
+```text
+node --check app.js
+node --check src/*.js
+node tests/frontend-smoke.test.mjs
+node tests/frontend-flow.test.mjs
+```
+
+Ces tests vérifient la syntaxe, quelques utilitaires et un parcours principal mocké. Ils ne remplacent pas des tests E2E navigateur.

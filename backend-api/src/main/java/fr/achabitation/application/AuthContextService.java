@@ -14,9 +14,11 @@ import java.util.Optional;
 @Service
 public class AuthContextService {
     private final UserRepository userRepository;
+    private final SessionTokenService sessionTokenService;
 
-    public AuthContextService(UserRepository userRepository) {
+    public AuthContextService(UserRepository userRepository, SessionTokenService sessionTokenService) {
         this.userRepository = userRepository;
+        this.sessionTokenService = sessionTokenService;
     }
 
     @Transactional(readOnly = true)
@@ -25,7 +27,7 @@ public class AuthContextService {
         if (token == null || token.isBlank()) {
             return Optional.empty();
         }
-        Optional<UserEntity> user = userRepository.findBySessionToken(token)
+        Optional<UserEntity> user = userRepository.findBySessionTokenHash(sessionTokenService.hashToken(token))
                 .filter(this::tokenStillValid);
         user.ifPresent(value -> {
             value.getKnownCustomConstraints().size();
@@ -54,7 +56,7 @@ public class AuthContextService {
         if (authorization != null && authorization.startsWith("Bearer ")) {
             return authorization.substring("Bearer ".length()).trim();
         }
-        String devToken = request.getHeader("X-Dev-Token");
-        return devToken == null ? null : devToken.trim();
+        String sessionToken = request.getHeader("X-Session-Token");
+        return sessionToken == null ? null : sessionToken.trim();
     }
 }

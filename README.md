@@ -1,79 +1,87 @@
-# ACHABITATION - Gestion finance - partage au RAV
+# ACHABITATION — partage de dépenses au reste à vivre
 
-ACHABITATION est une application de partage de dépenses au reste à vivre. Le projet a été refondu pour séparer clairement le serveur, le client web et les futurs clients mobiles.
+ACHABITATION est une application de partage de dépenses fondée sur le reste à vivre, abrégé RAV. Elle permet de répartir les frais d’un voyage ou d’un séjour en tenant compte de la capacité contributive des participant·es, de leurs dates de présence et de contraintes comme végétarien, sans alcool ou contraintes personnalisées.
 
-L’objectif architectural est le suivant : un backend API commun porte les règles métier et les données ; chaque interface — web, Android, iOS — consomme cette API sans dupliquer les calculs.
+Le projet est organisé autour d’un backend API commun. Le web et Android consomment la même API REST ; les calculs métier restent côté backend afin d’éviter les divergences entre clients.
+
+## Statut du projet
+
+Le dépôt correspond à un MVP bêta local avancé :
+
+- backend Spring Boot fonctionnel avec authentification, persistance, règles métier, exports CSV, audit et tests ;
+- frontend web HTML/CSS/JavaScript refactoré en modules ;
+- application Android Kotlin / Jetpack Compose fonctionnelle ;
+- dossier iOS encore préparatoire ;
+- ancien client Swing conservé uniquement comme référence historique.
+
+Ce n’est pas encore une version production publique. Les points à durcir sont listés dans `docs/PROD_READY_CHECKLIST.md`.
 
 ## Structure du dépôt
 
 ```text
 achabitation-refonte/
-├── backend-api/       API Spring Boot, sécurité, persistance, calculs, exports
-├── frontend-web/      interface web HTML/CSS/JS consommant backend-api
-├── mobile-android/    dossier préparatoire pour la future application Android
-├── mobile-ios/        dossier préparatoire pour la future application iOS
-├── desktop-legacy/    ancienne application Swing conservée comme référence
-├── docs/              spécifications, architecture, sécurité, dossier technique
+├── backend-api/       API Spring Boot, sécurité, persistance, calculs, exports, tests
+├── frontend-web/      interface web locale HTML/CSS/JavaScript consommant l'API
+├── mobile-android/    client Android natif Kotlin / Jetpack Compose
+├── mobile-ios/        emplacement réservé au futur client iOS
+├── desktop-legacy/    ancienne application Java Swing conservée comme référence
+├── docs/              documentation fonctionnelle, technique, sécurité et API
 ├── infra/             docker-compose PostgreSQL + backend-api
-└── scripts/           smoke tests et scripts transverses
+└── scripts/           smoke tests transverses
 ```
 
-## Backend API
+## Prérequis utiles
 
-Le backend est une API Java Spring Boot organisée en couches :
+- Java 21 pour le backend.
+- Node.js pour les tests frontend.
+- Android Studio pour le client Android.
+- Docker pour lancer PostgreSQL + backend via `infra/docker-compose.yml`.
 
-```text
-api/             contrôleurs REST et DTO
-application/     services applicatifs
-config/          configuration sécurité et CORS
-domain/          moteur métier pur, indépendant de Spring
-infrastructure/  entités JPA et repositories
-```
-
-Le moteur de calcul RAV est dans :
-
-```text
-backend-api/src/main/java/fr/achabitation/domain
-```
-
-Il ne dépend pas de Spring. C’est volontaire : il peut être testé isolément et réutilisé par le backend cloud, une interface mobile ou d’autres clients.
-
-## Lancer en local
-
-Terminal 1 : lancer l’API.
+## Lancer le backend en local
 
 ```bash
 cd backend-api
-mvn spring-boot:run
+./mvnw spring-boot:run
 ```
 
-Par défaut :
+Sous Windows :
+
+```bat
+cd backend-api
+mvnw.cmd spring-boot:run
+```
+
+URLs locales :
 
 ```text
 API        : http://localhost:8080/api/v1
+Health     : http://localhost:8080/api/v1/health
+Readiness  : http://localhost:8080/api/v1/health/readiness
 H2 console : http://localhost:8080/h2-console
 ```
 
-Base de données locale de développement :
+Base H2 locale de développement :
 
 ```text
 backend-api/data/achabitation.mv.db
 ```
 
-Terminal 2 : lancer l’interface web.
+## Lancer le frontend web
 
-Windows :
+Terminal 1 : backend lancé sur `localhost:8080`.
 
-```bat
-cd frontend-web
-run-web.bat
-```
-
-Linux/macOS :
+Terminal 2 :
 
 ```bash
 cd frontend-web
 ./run-web.sh
+```
+
+Sous Windows :
+
+```bat
+cd frontend-web
+run-web.bat
 ```
 
 Puis ouvrir :
@@ -82,62 +90,93 @@ Puis ouvrir :
 http://localhost:5173
 ```
 
-## Frontend web
-
-Le frontend web n’est plus servi par Spring Boot. Il vit dans `frontend-web/` et appelle l’API :
+Le frontend appelle par défaut :
 
 ```text
 http://localhost:8080/api/v1
 ```
 
-Ce découpage permet d’ajouter plus tard Android et iOS sans modifier l’API métier.
+Cette URL peut être surchargée par `window.ACHABITATION_API_BASE_URL` ou par `localStorage`.
 
-## Mobile
+## Lancer Android
 
-Les dossiers suivants sont préparés mais volontairement vides :
+Le backend doit être lancé au préalable.
+
+Depuis Android Studio, ouvrir :
 
 ```text
 mobile-android/
-mobile-ios/
 ```
 
-Ils accueilleront de futurs clients mobiles qui consommeront les mêmes endpoints REST que `frontend-web`.
+Sur émulateur Android, l’URL API par défaut est :
+
+```text
+http://10.0.2.2:8080/api/v1
+```
+
+Sur téléphone physique, utiliser l’adresse IP locale du PC qui exécute le backend, par exemple :
+
+```text
+http://192.168.1.42:8080/api/v1
+```
+
+Commandes Gradle utiles :
+
+```bash
+cd mobile-android
+./gradlew clean assembleDebug
+```
+
+Sous Windows :
+
+```bat
+cd mobile-android
+gradlew.bat clean assembleDebug
+```
 
 ## Docker / PostgreSQL
 
-Le fichier Docker Compose est dans :
-
-```text
-infra/docker-compose.yml
-```
-
-Depuis la racine :
+Depuis la racine du dépôt :
 
 ```bash
 docker compose -f infra/docker-compose.yml up --build
 ```
 
-Ce mode lance PostgreSQL et `backend-api` avec le profil `prod`.
+Ce mode lance PostgreSQL 16 et `backend-api` avec le profil Spring `prod`.
 
 ## Tests
 
-Tests backend :
+Backend :
 
 ```bash
 cd backend-api
-mvn clean test
+./mvnw clean test
 ```
 
-Smoke test API, backend lancé :
+Frontend :
 
-```powershell
-powershell -ExecutionPolicy Bypass -File .\scripts\smoke-test.ps1
+```bash
+cd frontend-web
+./run-tests.sh
 ```
 
-ou :
+Android :
+
+```bash
+cd mobile-android
+./gradlew testDebugUnitTest
+```
+
+Smoke test API, backend déjà lancé :
 
 ```bash
 ./scripts/smoke-test.sh
+```
+
+Sous PowerShell :
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\smoke-test.ps1
 ```
 
 ## Documentation principale
@@ -146,12 +185,16 @@ ou :
 docs/ARCHITECTURE_REFONTE.md
 docs/SPECIFICATION_FONCTIONNELLE_TECHNIQUE.md
 docs/DOSSIER_TECHNIQUE_JAVA.md
-docs/INTERFACE_WEB_LOCALE.md
-docs/MVP_BETA_CHECKLIST.md
+docs/API_EXEMPLES.md
 docs/SECURITY_BETA_MODEL.md
+docs/MVP_BETA_CHECKLIST.md
 docs/PROD_READY_CHECKLIST.md
+docs/FRONT_WEB_REFACTOR.md
+docs/INTERFACE_WEB_LOCALE.md
+docs/V1_AUTH_PROFIL_CONTRAINTES.md
+docs/EXPORTS_CSV.md
 ```
 
-## Statut
+## Intégration continue
 
-Le projet est un POC avancé / MVP bêta local. Il est structuré pour évoluer vers une architecture multi-client : web, Android, iOS.
+Le workflow GitHub Actions situé dans `.github/workflows/ci.yml` lance les tests backend avec Java 21 et les tests frontend avec Node.js 22. Le client Android n’est pas encore intégré au workflow CI actuel.

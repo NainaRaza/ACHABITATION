@@ -1,109 +1,113 @@
-# ACHABITATION — Correctifs V1 / préparation production
+# Checklist production
 
-Ce document liste les changements ajoutés pour rapprocher le projet d'une V1 exploitable hors prototype.
+Cette checklist liste les actions nécessaires avant exposition publique. Le projet actuel est un MVP bêta local avancé, pas une application production-ready.
 
-## Sécurité et droits
+## Sécurité applicative
 
-Le backend impose maintenant une authentification par token de session sur les routes applicatives sensibles. Le token est envoyé par l'interface web via l'en-tête :
+- [x] Routes applicatives protégées par authentification.
+- [x] Token brut non stocké en base.
+- [x] Logout serveur.
+- [x] Rôles de voyage.
+- [x] Contrôle du RAV privé côté backend.
+- [ ] Remplacer ou compléter le token opaque par une stratégie de session production : refresh token, rotation, révocation multi-session ou session serveur robuste.
+- [ ] Ajouter expiration configurable par environnement.
+- [ ] Ajouter changement et reset de mot de passe.
+- [ ] Ajouter vérification email.
+- [ ] Ajouter politique de mot de passe documentée.
+- [ ] Ajouter protection brute-force distribuée.
+- [ ] Ajouter journaux de sécurité exploitables.
+- [ ] Ajouter durcissement des headers HTTP derrière reverse proxy.
+- [ ] Ajouter configuration CORS par environnement.
+- [ ] Supprimer l’accès H2 console hors dev.
 
-```http
-Authorization: Bearer <token>
-```
+## Données et base
 
-Les règles appliquées sont :
+- [x] H2 local.
+- [x] PostgreSQL en profil `prod`.
+- [x] Migration initiale Flyway.
+- [ ] Supprimer `ddl-auto=update` de tout environnement partagé.
+- [ ] Ajouter migrations incrémentales versionnées.
+- [ ] Ajouter stratégie de sauvegarde PostgreSQL et restauration testée.
+- [ ] Ajouter index complémentaires après mesure.
+- [ ] Ajouter contraintes de suppression/archivage cohérentes.
+- [ ] Ajouter politique de conservation des audit logs.
+- [ ] Ajouter export/suppression des données utilisateur selon obligations applicables.
 
-- un utilisateur non connecté ne peut pas créer de voyage ;
-- la liste des voyages ne renvoie que les voyages dont l'utilisateur est membre ;
-- les données d'un voyage ne sont accessibles qu'aux membres du voyage ;
-- les contraintes du voyage et les invitations sont réservées aux rôles `OWNER` et `ADMIN` ;
-- la création de participant·es guest est réservée aux rôles `OWNER` et `ADMIN` ;
-- la modification d'une personne liée à un compte est réservée à ce compte ou aux administrateurs, avec protection du profil financier ;
-- la désactivation d'une personne est réservée aux rôles `OWNER` et `ADMIN` ;
-- les dépenses et résumés exigent au minimum l'appartenance au voyage.
+## Backend
 
-Les rôles reconnus sont :
+- [x] Tests unitaires domaine.
+- [x] Tests d’intégration API.
+- [x] Smoke tests.
+- [ ] Ajouter tests de charge simples.
+- [ ] Ajouter tests d’autorisation exhaustifs par route.
+- [ ] Ajouter pagination si les listes deviennent volumineuses.
+- [ ] Ajouter limites de taille strictes sur payloads.
+- [ ] Ajouter logs structurés, métriques et request-id.
+- [ ] Ajouter documentation OpenAPI générée.
 
-```text
-OWNER
-ADMIN
-PARTICIPANT
-READ_ONLY
-```
+## Frontend web
 
-## Invitations
+- [x] Séparation frontend/backend.
+- [x] Modules JS séparés.
+- [x] Tests Node de syntaxe et parcours mocké.
+- [ ] Ajouter tests E2E navigateur.
+- [ ] Ajouter tests d’accessibilité.
+- [ ] Ajouter build/bundling production ou choisir explicitement de rester sans bundler.
+- [ ] Ajouter CSP adaptée.
+- [ ] Vérifier l’ergonomie mobile web.
+- [ ] Ajouter design system minimal.
+- [ ] Ajouter messages d’erreur homogènes.
 
-Ajout d'un système d'invitations :
+## Android
 
-```http
-POST   /api/v1/trips/{tripId}/invitations
-GET    /api/v1/trips/{tripId}/invitations
-DELETE /api/v1/trips/{tripId}/invitations/{invitationId}
-POST   /api/v1/trips/{tripId}/join
-```
+- [x] Client Kotlin / Compose.
+- [x] Gradle Wrapper 8.9.
+- [x] Stockage chiffré via `EncryptedSharedPreferences`.
+- [x] Cleartext autorisé seulement en debug.
+- [x] Cleartext refusé en release.
+- [x] Session expirée gérée.
+- [ ] Ajouter CI Android.
+- [ ] Ajouter tests UI Compose et tests instrumentés.
+- [ ] Ajouter signature release réelle.
+- [ ] Remplacer l’URL release placeholder.
+- [ ] Ajouter Storage Access Framework pour les exports CSV.
+- [ ] Ajouter gestion fine de perte réseau.
+- [ ] Ajouter mode hors-ligne ou décider explicitement qu’il n’existe pas.
+- [ ] Vérifier accessibilité TalkBack.
+- [ ] Préparer publication Play Store si nécessaire.
 
-Un utilisateur non membre doit fournir un `invitationCode` pour rejoindre un voyage.
+## iOS
 
-## Export CSV
+- [ ] Créer le projet iOS.
+- [ ] Aligner les DTO sur le backend.
+- [ ] Implémenter auth, voyages, personnes, dépenses, résumé, invitations, audit.
+- [ ] Ajouter stockage sécurisé Keychain.
+- [ ] Ajouter tests.
 
-Ajout de deux exports :
+## DevOps
 
-```http
-GET /api/v1/trips/{tripId}/exports/expenses.csv
-GET /api/v1/trips/{tripId}/exports/summary.csv
-```
+- [x] Docker Compose local PostgreSQL + backend.
+- [x] CI backend et frontend.
+- [ ] Ajouter CI Android.
+- [ ] Ajouter build Docker reproductible avec tags.
+- [ ] Ajouter reverse proxy TLS.
+- [ ] Ajouter configuration par secrets.
+- [ ] Ajouter monitoring, alerting, environnements distincts et rollback.
 
-L'interface web expose ces exports dans l'onglet Résumé.
+## Produit / conformité
 
-## Base de données production
+- [ ] Conditions d’utilisation.
+- [ ] Politique de confidentialité.
+- [ ] Mentions légales.
+- [ ] Procédure de suppression de compte.
+- [ ] Export des données personnelles.
+- [ ] Analyse RGPD minimale.
+- [ ] Support utilisateur.
+- [ ] Onboarding clair.
+- [ ] Texte expliquant que le RAV privé peut parfois être inféré indirectement par les calculs.
 
-Le profil `prod` est prévu pour PostgreSQL :
+## Décision de statut
 
-```bash
-SPRING_PROFILES_ACTIVE=prod
-DATABASE_URL=jdbc:postgresql://localhost:5432/achabitation
-DATABASE_USER=achabitation
-DATABASE_PASSWORD=achabitation
-```
+Le projet peut être considéré comme cohérent pour une bêta locale fermée si les tests passent et si les parcours manuels principaux sont validés sur web et Android.
 
-En prod :
-
-```yaml
-spring.jpa.hibernate.ddl-auto: validate
-spring.flyway.enabled: true
-```
-
-Le schéma initial est versionné dans :
-
-```text
-backend-api/src/main/resources/db/migration/V1__initial_schema.sql
-```
-
-Le profil local reste en H2 avec `ddl-auto=update` pour ne pas casser le développement.
-
-## Docker
-
-Ajout :
-
-```text
-backend-api/Dockerfile
-infra/docker-compose.yml
-```
-
-Lancement local PostgreSQL + backend-api :
-
-```bash
-docker compose -f infra/docker-compose.yml up --build
-```
-
-## Limites restantes avant vraie production publique
-
-Les points suivants restent à traiter avant exposition à des utilisateurs réels :
-
-- remplacement du token de session maison par JWT ou session serveur durcie ;
-- expiration/rotation avancée des sessions ;
-- emails transactionnels pour invitations et réinitialisation de mot de passe ;
-- suppression de compte et export RGPD complet ;
-- sauvegardes automatisées et procédure de restauration testée ;
-- durcissement CORS/CSRF selon le mode de déploiement ;
-- observabilité : logs structurés, métriques, alerting ;
-- tests de charge et tests de concurrence.
+Il ne doit pas être considéré comme prêt pour une production publique tant que les points sécurité, DevOps, RGPD, monitoring, CI Android et tests E2E ne sont pas traités.

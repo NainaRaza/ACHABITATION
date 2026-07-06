@@ -107,6 +107,9 @@ class AchabitationApi(
     private fun rawRequest(path: String, method: String, jsonBody: String?, authRequired: Boolean, accept: String): String {
         val baseUrl = baseUrlProvider().trimEnd('/')
         val url = URL(baseUrl + path)
+        if (!BuildConfig.DEBUG && url.protocol.equals("http", ignoreCase = true)) {
+            throw ApiException("Configuration invalide : HTTP est interdit en version release.")
+        }
         val connection = (url.openConnection() as HttpURLConnection).apply {
             requestMethod = method
             connectTimeout = 10_000

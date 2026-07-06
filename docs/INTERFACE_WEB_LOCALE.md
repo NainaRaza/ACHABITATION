@@ -1,23 +1,6 @@
 # Interface web locale
 
-L’interface web est maintenant séparée du backend.
-
-Elle se trouve dans :
-
-```text
-frontend-web/
-├── index.html
-├── app.js
-├── styles.css
-├── run-web.bat
-└── run-web.sh
-```
-
-Le backend API se trouve dans :
-
-```text
-backend-api/
-```
+L’interface web est séparée du backend. Elle se trouve dans `frontend-web/`. Le backend API se trouve dans `backend-api/`.
 
 ## Lancement local
 
@@ -25,7 +8,7 @@ Terminal 1 : lancer le backend API.
 
 ```bash
 cd achabitation-refonte/backend-api
-mvn spring-boot:run
+./mvnw spring-boot:run
 ```
 
 Terminal 2 : lancer le frontend web.
@@ -52,90 +35,75 @@ http://localhost:5173
 
 ## URL API appelée par le frontend
 
-Par défaut, `frontend-web/app.js` appelle :
+Par défaut, le frontend appelle :
 
 ```text
 http://localhost:8080/api/v1
 ```
 
-La configuration est au début de `app.js` :
+La configuration est dans `frontend-web/src/api.js` :
 
 ```js
-const API_BASE_URL = window.ACHABITATION_API_BASE_URL
+export const API_BASE_URL = window.ACHABITATION_API_BASE_URL
     || localStorage.getItem("achabitation.apiBaseUrl")
     || "http://localhost:8080/api/v1";
 ```
 
-Cela permet de changer l’URL API sans modifier toute l’application.
-
 ## CORS
 
-Comme le frontend tourne sur `localhost:5173` et l’API sur `localhost:8080`, le backend doit autoriser les appels cross-origin.
-
-La configuration CORS est dans :
-
-```text
-backend-api/src/main/java/fr/achabitation/config/SecurityConfig.java
-```
-
-Origines autorisées en développement :
+Le backend autorise les appels cross-origin depuis :
 
 ```text
 http://localhost:5173
 http://127.0.0.1:5173
 ```
 
+Configuration : `backend-api/src/main/java/fr/achabitation/config/SecurityConfig.java`.
+
 ## Rôle de l’interface
 
-Le frontend web sert à manipuler l’application depuis un navigateur :
+Le frontend permet de créer ou connecter un compte, modifier le compte et le profil RAV, créer/rejoindre un voyage, gérer les contraintes, invitations, participant·es, guests, dépenses, résumé, exports CSV et historique.
 
-- créer ou connecter un compte ;
-- créer et rejoindre un voyage ;
-- gérer les participant·es ;
-- gérer les contraintes du voyage ;
-- ajouter les dépenses ;
-- consulter le résumé ;
-- exporter les CSV ;
-- consulter l’historique.
-
-Le frontend peut faire des validations ergonomiques, mais les règles critiques restent côté backend.
-
-Exemples de règles qui doivent rester côté backend :
-
-- droits d’accès ;
-- appartenance au voyage ;
-- unicité des noms ;
-- cohérence des dates ;
-- validation des périodes de présence ;
-- validation des montants ;
-- confidentialité du RAV ;
-- calculs de soldes.
+Le frontend peut faire des validations ergonomiques, mais les règles critiques restent côté backend : authentification, droits d’accès, appartenance au voyage, unicité des noms, cohérence des dates, montants, confidentialité du RAV et calculs.
 
 ## Pourquoi cette séparation
 
-Avant la refonte, Spring Boot servait directement les fichiers statiques sur `/app`. C’était acceptable pour un POC, mais moins clair pour une architecture multi-client.
+Spring Boot ne sert plus directement l’interface web sur `/app`. Le serveur expose l’API, et le frontend web est servi par un serveur local distinct.
 
-Désormais :
+Architecture cible :
 
 ```text
-frontend-web  →  backend-api  →  base de données
-mobile-android → backend-api  →  base de données
-mobile-ios     → backend-api  →  base de données
+frontend-web    → backend-api → base de données
+mobile-android  → backend-api → base de données
+mobile-ios      → backend-api → base de données future
 ```
 
-La même API pourra donc être utilisée par l’interface web, Android et iOS.
+## Parcours après invitation
 
-## Parcours après invitation : choisir son identité dans le voyage
+Après avoir rejoint un voyage avec un code d’invitation, l’utilisateur peut choisir un guest existant et le lier à son compte, ou créer une nouvelle personne directement liée à son compte.
 
-Après avoir rejoint un voyage avec un code d’invitation, l’interface affiche un bloc de rattachement.
+Endpoint de liaison :
 
-L’utilisateur connecté peut alors :
+```http
+POST /api/v1/trips/{tripId}/persons/{personId}/link-current-user
+```
 
-- choisir un guest existant et cliquer sur **C’est moi** ;
-- ou choisir **Autre personne : me créer dans ce voyage**.
+Endpoint d’ajout direct :
 
-Dans le premier cas, le compte est lié au guest choisi. Si le profil utilisateur contient un RAV exploitable, l’interface demande si le profil doit être appliqué au guest. Sans confirmation, les données existantes du guest sont conservées.
+```http
+POST /api/v1/trips/{tripId}/persons/current-user
+```
 
-Dans le second cas, l’application crée une nouvelle personne directement liée au compte connecté. Par défaut, la période de présence proposée est l’ensemble du voyage. Si le profil utilisateur est exploitable, l’interface propose de créer la personne avec ce profil ; sinon elle crée la personne en mode moyenne, sans RAV personnel.
+## Tests frontend
 
-Le même ajout direct existe dans l’onglet **Participant·es** via le bouton **+ M’ajouter moi-même**. Cela évite le parcours lourd : créer un guest, puis le lier manuellement au compte.
+```bash
+cd frontend-web
+./run-tests.sh
+```
+
+Sous Windows :
+
+```bat
+cd frontend-web
+run-tests.bat
+```
