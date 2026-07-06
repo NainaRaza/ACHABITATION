@@ -1,11 +1,19 @@
 # Java / Maven
-backend/target/
+backend-api/target/
 *.class
 
 # Local databases
-backend/data/
+backend-api/data/
 *.mv.db
 *.trace.db
+
+# Frontend temporary files
+frontend-web/.cache/
+frontend-web/dist/
+
+# Mobile build outputs, added later
+mobile-android/build/
+mobile-ios/build/
 
 # IDE
 .idea/

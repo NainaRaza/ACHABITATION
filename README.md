@@ -1,138 +1,137 @@
 # ACHABITATION - Gestion finance - partage au RAV
 
-Ce dépôt contient la refonte d'architecture du projet.
+ACHABITATION est une application de partage de dépenses au reste à vivre. Le projet a été refondu pour séparer clairement le serveur, le client web et les futurs clients mobiles.
 
-L'objectif n'est plus seulement d'avoir une application Java desktop locale, mais de préparer une architecture compatible avec :
+L’objectif architectural est le suivant : un backend API commun porte les règles métier et les données ; chaque interface — web, Android, iOS — consomme cette API sans dupliquer les calculs.
 
-- plusieurs voyages séparés ;
-- comptes utilisateurs ;
-- authentification ;
-- synchronisation cloud ;
-- application mobile ;
-- export PDF / Excel ;
-- import de tickets ;
-- OCR ;
-- historique détaillé ;
-- multi-devises ;
-- plusieurs périodes de présence par personne.
-
-## Structure
+## Structure du dépôt
 
 ```text
 achabitation-refonte/
-├── backend/          API Spring Boot, base future du cloud et du mobile
-├── desktop-legacy/   ancienne application Swing conservée comme référence fonctionnelle
-└── docs/             spécifications et notes d'architecture
+├── backend-api/       API Spring Boot, sécurité, persistance, calculs, exports
+├── frontend-web/      interface web HTML/CSS/JS consommant backend-api
+├── mobile-android/    dossier préparatoire pour la future application Android
+├── mobile-ios/        dossier préparatoire pour la future application iOS
+├── desktop-legacy/    ancienne application Swing conservée comme référence
+├── docs/              spécifications, architecture, sécurité, dossier technique
+├── infra/             docker-compose PostgreSQL + backend-api
+└── scripts/           smoke tests et scripts transverses
 ```
 
-## Backend
+## Backend API
 
 Le backend est une API Java Spring Boot organisée en couches :
 
 ```text
 api/             contrôleurs REST et DTO
 application/     services applicatifs
-config/          configuration sécurité et infrastructure
+config/          configuration sécurité et CORS
 domain/          moteur métier pur, indépendant de Spring
 infrastructure/  entités JPA et repositories
 ```
 
-Le moteur de calcul RAV est dans `backend/src/main/java/fr/achabitation/domain`.
-Il ne dépend pas de Spring. C'est volontaire : il pourra être testé isolément et réutilisé plus tard par une application mobile, un backend cloud ou une interface desktop.
+Le moteur de calcul RAV est dans :
 
-## Lancer le backend
+```text
+backend-api/src/main/java/fr/achabitation/domain
+```
 
-Prérequis :
+Il ne dépend pas de Spring. C’est volontaire : il peut être testé isolément et réutilisé par le backend cloud, une interface mobile ou d’autres clients.
 
-- JDK 21 ;
-- Maven 3.9+.
+## Lancer en local
+
+Terminal 1 : lancer l’API.
 
 ```bash
-cd backend
+cd backend-api
 mvn spring-boot:run
 ```
 
 Par défaut :
 
 ```text
-API : http://localhost:8080/api/v1
+API        : http://localhost:8080/api/v1
 H2 console : http://localhost:8080/h2-console
 ```
 
 Base de données locale de développement :
 
 ```text
-./backend/data/achabitation.mv.db
+backend-api/data/achabitation.mv.db
 ```
 
-## Statut de la sécurité
+Terminal 2 : lancer l’interface web.
 
-La structure utilisateur/authentification existe déjà :
+Windows :
 
-- `UserEntity`
-- `/api/v1/auth/register`
-- `/api/v1/auth/login`
-- hachage des mots de passe avec BCrypt
+```bat
+cd frontend-web
+run-web.bat
+```
 
-Le backend impose maintenant un token de session local sur les routes sensibles. Ce token permet une bêta fermée, mais devra être remplacé par une authentification durcie avant production publique : JWT/session sécurisée, reset de mot de passe, renouvellement, révocation et supervision.
+Linux/macOS :
 
-## Ancienne application
-
-L'ancienne version Swing est conservée dans `desktop-legacy/`.
-Elle reste utile pour comparer le comportement fonctionnel et éviter de perdre les règles métier déjà validées.
-
-
-## Interface graphique de la nouvelle architecture
-
-Le backend Spring Boot sert maintenant une première interface web locale.
-
-```powershell
-cd backend
-mvn spring-boot:run
+```bash
+cd frontend-web
+./run-web.sh
 ```
 
 Puis ouvrir :
 
 ```text
-http://localhost:8080/app
+http://localhost:5173
 ```
 
-Voir `docs/INTERFACE_WEB_LOCALE.md`.
+## Frontend web
 
+Le frontend web n’est plus servi par Spring Boot. Il vit dans `frontend-web/` et appelle l’API :
 
-## Documentation V1 ajoutée
+```text
+http://localhost:8080/api/v1
+```
 
-- `docs/V1_AUTH_PROFIL_CONTRAINTES.md` : règles d’authentification locale, profil RAV, guests, liaison compte et contraintes de voyage.
+Ce découpage permet d’ajouter plus tard Android et iOS sans modifier l’API métier.
 
-## Correctifs V1 / pré-production
+## Mobile
 
-La refonte contient maintenant une première couche de durcissement :
+Les dossiers suivants sont préparés mais volontairement vides :
 
-- accès par token de session ;
-- droits par voyage ;
-- rôles `OWNER`, `ADMIN`, `PARTICIPANT`, `READ_ONLY` ;
-- invitations avec code expirant ;
-- accès aux voyages limité aux membres ;
-- exports CSV ;
-- profil PostgreSQL/Flyway pour la production ;
-- Dockerfile backend et docker-compose PostgreSQL ;
-- documentation dédiée dans `docs/PROD_READY_CHECKLIST.md`.
+```text
+mobile-android/
+mobile-ios/
+```
 
+Ils accueilleront de futurs clients mobiles qui consommeront les mêmes endpoints REST que `frontend-web`.
 
-## Validation bêta
+## Docker / PostgreSQL
 
-Pour valider une version bêta fermée :
+Le fichier Docker Compose est dans :
+
+```text
+infra/docker-compose.yml
+```
+
+Depuis la racine :
 
 ```bash
-cd backend
-mvn clean test
-mvn spring-boot:run
+docker compose -f infra/docker-compose.yml up --build
 ```
 
-Dans un second terminal :
+Ce mode lance PostgreSQL et `backend-api` avec le profil `prod`.
+
+## Tests
+
+Tests backend :
+
+```bash
+cd backend-api
+mvn clean test
+```
+
+Smoke test API, backend lancé :
 
 ```powershell
-.\scripts\smoke-test.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\smoke-test.ps1
 ```
 
 ou :
@@ -141,4 +140,18 @@ ou :
 ./scripts/smoke-test.sh
 ```
 
-Voir `docs/MVP_BETA_CHECKLIST.md`.
+## Documentation principale
+
+```text
+docs/ARCHITECTURE_REFONTE.md
+docs/SPECIFICATION_FONCTIONNELLE_TECHNIQUE.md
+docs/DOSSIER_TECHNIQUE_JAVA.md
+docs/INTERFACE_WEB_LOCALE.md
+docs/MVP_BETA_CHECKLIST.md
+docs/SECURITY_BETA_MODEL.md
+docs/PROD_READY_CHECKLIST.md
+```
+
+## Statut
+
+Le projet est un POC avancé / MVP bêta local. Il est structuré pour évoluer vers une architecture multi-client : web, Android, iOS.

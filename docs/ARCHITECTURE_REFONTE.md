@@ -1,184 +1,199 @@
-# Architecture cible - ACHABITATION
+# Architecture refondue ACHABITATION
 
 ## Objectif
 
-La refonte transforme l'application locale en une architecture compatible avec un produit cloud/mobile.
-
-L'ancien modèle Swing + fichier `.ser` était suffisant pour un MVP local, mais insuffisant pour :
-
-- plusieurs voyages ;
-- plusieurs utilisateurs ;
-- synchronisation cloud ;
-- historique robuste ;
-- application mobile ;
-- tickets / OCR ;
-- multi-devises.
-
-La nouvelle architecture place le backend au centre.
+La refonte architecturale sépare le projet en plusieurs applications distinctes :
 
 ```text
-Mobile / Web / Desktop
-        ↓
-API REST Spring Boot
-        ↓
-Services applicatifs
-        ↓
-Moteur de calcul métier
-        ↓
-Base SQL : H2 en dev, PostgreSQL en cible
+backend-api      serveur central et règles métier
+frontend-web     client web
+mobile-android   futur client Android
+mobile-ios       futur client iOS
 ```
 
-## Choix technique
+Le principe est que le backend porte la vérité métier et expose une API REST. Les interfaces ne doivent pas dupliquer les calculs ni les droits : elles consomment les endpoints du backend.
 
-Backend : Spring Boot + Java 21.
-
-Persistance : JPA/Hibernate.
-
-Base de développement : H2 fichier.
-
-Base cible : PostgreSQL.
-
-Sécurité cible : Spring Security + JWT ou session sécurisée.
-
-## Couches
-
-### api
-
-Expose les routes REST.
-
-Rôle :
-
-- recevoir les requêtes ;
-- valider les DTO ;
-- retourner les réponses JSON ;
-- ne pas contenir de logique métier lourde.
-
-### application
-
-Orchestre les cas d'utilisation.
-
-Exemples :
-
-- créer un voyage ;
-- ajouter une personne ;
-- créer une dépense ;
-- calculer un résumé ;
-- écrire un audit log.
-
-### domain
-
-Contient les règles métier pures.
-
-C'est la couche la plus importante. Elle ne dépend pas de Spring, de JPA ou d'une base de données.
-
-Contenu actuel :
-
-- `DomainPerson`
-- `DomainExpense`
-- `PresencePeriod`
-- `Balance`
-- `Settlement`
-- `BalanceCalculator`
-
-### infrastructure
-
-Contient les détails techniques :
-
-- entités JPA ;
-- repositories Spring Data ;
-- base SQL ;
-- modèle de persistance.
-
-## Fonctionnalités préparées
-
-### Plusieurs voyages séparés
-
-Entité : `TripEntity`.
-
-Toutes les personnes et dépenses sont rattachées à un `trip_id`.
-
-### Comptes utilisateurs
-
-Entité : `UserEntity`.
-
-Les utilisateurs sont séparés des personnes d'un voyage. C'est important : une personne dans un voyage peut représenter un ami, même s'il n'a pas encore de compte.
-
-### Membres du voyage
-
-Entité : `TripMemberEntity`.
-
-Rôles prévus :
-
-- `OWNER`
-- `ADMIN`
-- `PARTICIPANT`
-- `READ_ONLY`
-
-### Plusieurs périodes de présence
-
-Entité : `PresencePeriodEntity`.
-
-Une personne peut avoir plusieurs périodes de présence. Les périodes sont inclusives. Elles doivent respecter trois contraintes métier :
-
-- chaque période doit avoir une date de début et une date de fin ;
-- chaque période doit être comprise dans les dates du voyage ;
-- deux périodes d'une même personne ne doivent pas se chevaucher, y compris sur une borne commune.
-
-Exemple :
+## Structure cible du dépôt
 
 ```text
-Présent du 01/08 au 04/08
-Absent du 05/08 au 07/08
-Présent du 08/08 au 11/08
+achabitation-refonte/
+├── backend-api/
+│   ├── pom.xml
+│   ├── Dockerfile
+│   ├── src/main/java/fr/achabitation/
+│   │   ├── api/
+│   │   ├── application/
+│   │   ├── config/
+│   │   ├── domain/
+│   │   └── infrastructure/
+│   ├── src/main/resources/
+│   └── src/test/
+│
+├── frontend-web/
+│   ├── index.html
+│   ├── app.js
+│   ├── styles.css
+│   ├── run-web.bat
+│   └── run-web.sh
+│
+├── mobile-android/
+│   └── README.md
+│
+├── mobile-ios/
+│   └── README.md
+│
+├── desktop-legacy/
+│   └── ancienne application Swing
+│
+├── docs/
+│   └── documentation projet
+│
+├── infra/
+│   └── docker-compose.yml
+│
+└── scripts/
+    └── smoke tests
 ```
 
-### Dépenses
+## Flux général
 
-Entité : `ExpenseEntity`.
+```text
+Navigateur web
+    ↓ HTTP REST
+backend-api
+    ↓ JPA
+Base H2 ou PostgreSQL
+```
 
-La date d'une dépense doit être comprise dans les dates du voyage. Cette règle s'applique aussi aux dépenses globales, même si leur répartition ignore les dates de présence individuelles.
+Plus tard :
 
-Modes prévus :
+```text
+Android       ┐
+iOS           ├── HTTP REST → backend-api → PostgreSQL
+Frontend web  ┘
+```
 
-- dépense normale ;
-- dépense globale ;
-- mode avancé avec participant·es manuel·les.
+## Backend API
 
-### Multi-devises
+Le backend est une application Spring Boot. Il contient :
 
-Chaque dépense a :
+- l’authentification ;
+- les rôles ;
+- les invitations ;
+- la gestion des voyages ;
+- la gestion des personnes et guests ;
+- les dépenses ;
+- les contraintes de voyage ;
+- le calcul RAV ;
+- le résumé ;
+- les remboursements ;
+- les exports CSV ;
+- l’historique ;
+- les validations métier ;
+- la persistance.
 
-- une devise de saisie ;
-- un taux de conversion vers la devise du voyage.
+Il ne contient plus les fichiers de l’interface web.
 
-Le taux est stocké au moment de la dépense pour éviter que l'historique change si les taux évoluent.
+## Frontend web
 
-### Historique détaillé
+Le frontend web est une application HTML/CSS/JavaScript sans framework.
 
-Entité : `AuditLogEntity`.
+Il est volontairement séparé dans `frontend-web/`. Il appelle par défaut :
 
-Actions préparées :
+```text
+http://localhost:8080/api/v1
+```
 
-- création de voyage ;
-- création/modification/désactivation d'une personne ;
-- création/modification/suppression d'une dépense.
+Il ne doit pas contenir de règles métier critiques. Les validations côté écran ne sont là que pour améliorer l’expérience utilisateur.
 
-### Authentification
+## Mobile Android / iOS
 
-Le modèle utilisateur et les endpoints existent.
+Les dossiers `mobile-android/` et `mobile-ios/` sont préparés pour la suite.
 
-État bêta : les routes sensibles passent par un token de session local et les droits sont vérifiés par voyage. Avant production publique, il faudra remplacer ce mécanisme par une authentification durcie avec révocation, renouvellement et supervision.
+Les applications mobiles devront consommer l’API REST de `backend-api`.
 
-### Mobile et cloud
+Règle importante : le calcul RAV ne doit pas être recodé côté mobile. Le backend doit rester l’autorité.
 
-Le mobile n'est pas développé dans cette refonte, mais l'architecture est compatible : l'application mobile pourra consommer l'API REST.
+## Séparation des responsabilités
 
-## Prochaines étapes techniques
+### Backend API
 
-1. Ajouter des tests unitaires sur `BalanceCalculator`.
-2. Ajouter une vraie sécurité JWT.
-3. Ajouter les droits par voyage sur chaque endpoint.
-4. Ajouter l'export CSV/XLSX.
-5. Ajouter l'export PDF.
-6. Ajouter un module d'import ticket manuel.
-7. Ajouter OCR ensuite, pas avant.
+Responsable de :
+
+- droits ;
+- sécurité ;
+- validation ;
+- calcul ;
+- données ;
+- exports ;
+- historique.
+
+### Frontend web
+
+Responsable de :
+
+- affichage ;
+- formulaires ;
+- navigation ;
+- messages utilisateur ;
+- appels API.
+
+### Mobile
+
+Responsable de :
+
+- expérience mobile ;
+- appels API ;
+- stockage local éventuel de session ;
+- notifications futures éventuelles.
+
+## Configuration locale
+
+Backend :
+
+```bash
+cd backend-api
+mvn spring-boot:run
+```
+
+Frontend :
+
+```bash
+cd frontend-web
+./run-web.sh
+```
+
+URL frontend :
+
+```text
+http://localhost:5173
+```
+
+URL API :
+
+```text
+http://localhost:8080/api/v1
+```
+
+## Docker
+
+La configuration Docker est dans :
+
+```text
+infra/docker-compose.yml
+```
+
+Lancement :
+
+```bash
+docker compose -f infra/docker-compose.yml up --build
+```
+
+## Avantages de la nouvelle architecture
+
+- le backend devient un vrai serveur API ;
+- le frontend web peut évoluer indépendamment ;
+- Android et iOS pourront être ajoutés sans refondre le serveur ;
+- les tests backend restent concentrés sur les règles métier ;
+- le déploiement est plus clair ;
+- la documentation distingue mieux serveur, clients et infra.

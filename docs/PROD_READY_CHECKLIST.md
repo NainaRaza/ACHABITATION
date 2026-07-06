@@ -75,7 +75,7 @@ spring.flyway.enabled: true
 Le schéma initial est versionné dans :
 
 ```text
-backend/src/main/resources/db/migration/V1__initial_schema.sql
+backend-api/src/main/resources/db/migration/V1__initial_schema.sql
 ```
 
 Le profil local reste en H2 avec `ddl-auto=update` pour ne pas casser le développement.
@@ -85,14 +85,14 @@ Le profil local reste en H2 avec `ddl-auto=update` pour ne pas casser le dévelo
 Ajout :
 
 ```text
-backend/Dockerfile
-docker-compose.yml
+backend-api/Dockerfile
+infra/docker-compose.yml
 ```
 
-Lancement local PostgreSQL + backend :
+Lancement local PostgreSQL + backend-api :
 
 ```bash
-docker compose up --build
+docker compose -f infra/docker-compose.yml up --build
 ```
 
 ## Limites restantes avant vraie production publique

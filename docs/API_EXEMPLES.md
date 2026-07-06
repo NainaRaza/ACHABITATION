@@ -204,3 +204,42 @@ Réponse : le voyage rejoint.
 ```
 
 Dans l'interface web, le champ est disponible depuis le tableau de bord, dans le bloc “Mes voyages”, section “Rejoindre un voyage”.
+
+## Créer une personne directement liée au compte connecté
+
+Cette route sert au bouton **+ M’ajouter moi-même** et au choix **Autre personne** après avoir rejoint un voyage.
+
+```http
+POST /api/v1/trips/{tripId}/persons/current-user
+Authorization: Bearer <token>
+Content-Type: application/json
+```
+
+```json
+{
+  "name": "Nvoskerjen",
+  "applyProfileToPerson": true,
+  "presencePeriods": [
+    {"startDate": "2026-07-01", "endDate": "2026-07-12"}
+  ]
+}
+```
+
+Règles :
+
+- le compte doit déjà être membre du voyage ;
+- le compte ne doit pas déjà être lié à une autre personne du même voyage ;
+- le nom choisi doit être unique dans le voyage ;
+- les périodes de présence doivent respecter les dates du voyage ;
+- si `applyProfileToPerson` vaut `true`, le profil utilisateur doit être exploitable ;
+- si `applyProfileToPerson` vaut `false`, la personne est créée en mode moyenne.
+
+## Rejoindre puis choisir un guest ou créer sa personne
+
+Le parcours conseillé côté interface est :
+
+1. appeler `POST /api/v1/trips/join-by-code` avec le code d’invitation ;
+2. charger `GET /api/v1/trips/{tripId}/persons` ;
+3. proposer les guests existants ;
+4. soit appeler `POST /api/v1/trips/{tripId}/join` avec `guestPersonId` ;
+5. soit appeler `POST /api/v1/trips/{tripId}/persons/current-user` pour créer une nouvelle personne liée au compte.

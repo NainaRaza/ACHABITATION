@@ -18,7 +18,7 @@ Le projet est considéré comme prêt pour une bêta fermée lorsque les points 
 
 ## Commandes de validation
 
-Depuis `achabitation-refonte/backend` :
+Depuis `achabitation-refonte/backend-api` :
 
 ```bash
 mvn clean test
@@ -40,7 +40,7 @@ ou sous Linux/macOS/Git Bash :
 Pour tester PostgreSQL + Docker :
 
 ```bash
-docker compose up --build
+docker compose -f infra/docker-compose.yml up --build
 ```
 
 Puis relancer le smoke test contre le backend Docker :
@@ -54,7 +54,7 @@ Puis relancer le smoke test contre le backend Docker :
 Ouvrir :
 
 ```text
-http://localhost:8080/app
+http://localhost:5173
 ```
 
 Valider le scénario suivant :

@@ -56,4 +56,7 @@ Les endpoints publics sont limités à :
 - `/api/v1/auth/login`
 - `/api/v1/health`
 - `/api/v1/health/readiness`
-- `/app/**`
+
+## Frontend web séparé
+
+Le frontend web est servi séparément depuis `frontend-web/` sur `http://localhost:5173` en développement. Il n’est plus servi par Spring Boot sur `/app`. Le backend expose uniquement l’API et autorise le CORS local pour le client web de développement.
