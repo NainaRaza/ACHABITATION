@@ -72,7 +72,9 @@ Cette version Android reprend les principales fonctionnalités disponibles via l
 
 ```text
 app/src/main/java/fr/achabitation/mobile/
-├── MainActivity.kt      # UI Compose
+├── MainActivity.kt      # shell Compose, navigation, écrans principaux
+├── UiTheme.kt           # thème Material 3 et enums d'écran
+├── UiComponents.kt      # composants communs et helpers d'affichage
 ├── MainViewModel.kt     # état écran + orchestration API
 ├── AchabitationApi.kt   # client HTTP REST sans logique métier
 └── ApiModels.kt         # DTO alignés sur backend-api
@@ -98,3 +100,20 @@ Cette archive contient une refonte de l'interface Android pour éviter le modèl
 - écran de connexion plus propre avec bloc d'en-tête ;
 - messages d'erreur/succès mieux visibles ;
 - conservation des appels API et du ViewModel existants afin de limiter les régressions fonctionnelles.
+
+## Évolution V1 mobile propre
+
+Cette version ajoute une passe UX ciblée sur l'usage réel mobile :
+
+- écran voyage enrichi avec actions rapides `Dépense`, `Personnes`, `Soldes` ;
+- tableau de bord en tuiles lisibles sur petit écran ;
+- écran dépenses repensé autour d'un parcours guidé en 4 étapes :
+  1. informations principales ;
+  2. choix du payeur ;
+  3. participants concernés ;
+  4. options RAV et validation ;
+- aperçu de la dépense avant enregistrement ;
+- liste des dépenses existantes directement modifiable au toucher ;
+- début de découpage UI : thème, enums d'écran et composants communs extraits dans `UiTheme.kt` et `UiComponents.kt`.
+
+L'objectif de cette passe est de conserver la compatibilité backend/web tout en rendant l'application utilisable comme une vraie application mobile, et plus seulement comme un écran fonctionnel de test.
