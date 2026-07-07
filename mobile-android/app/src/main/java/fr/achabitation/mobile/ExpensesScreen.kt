@@ -143,7 +143,7 @@ fun ExpenseEditor(expense: ExpenseResponse?, vm: MainViewModel, onDone: () -> Un
     var type by remember(expense?.id) { mutableStateOf(expense?.type ?: "NORMAL") }
     var meat by remember(expense?.id) { mutableStateOf(expense?.meatAmount.toInput()) }
     var alcohol by remember(expense?.id) { mutableStateOf(expense?.alcoholAmount.toInput()) }
-    var customAmounts by remember(expense?.id) { mutableStateOf(expense?.customConstraintAmounts?.entries?.joinToString(", ") { "${it.key}=${it.value}" }.orEmpty()) }
+    var customAmounts by remember(expense?.id, trip.customConstraints) { mutableStateOf(initialExpenseCustomAmounts(expense, trip)) }
     var advanced by remember(expense?.id) { mutableStateOf(expense?.advancedMode ?: false) }
     var selectedParticipants by remember(expense?.id) { mutableStateOf(expense?.manualParticipantIds ?: activePersons.map { it.id }.toSet()) }
     var currency by remember(expense?.id) { mutableStateOf(expense?.currency ?: trip.referenceCurrency) }
@@ -197,7 +197,7 @@ fun ExpenseEditor(expense: ExpenseResponse?, vm: MainViewModel, onDone: () -> Un
                     alcohol = alcohol,
                     onAlcohol = { alcohol = it },
                     customAmounts = customAmounts,
-                    onCustomAmounts = { customAmounts = it },
+                    onCustomAmountChange = { name, value -> customAmounts = customAmounts + (name to value) },
                     trip = trip,
                     currency = currency
                 )
@@ -232,9 +232,9 @@ fun ExpenseEditor(expense: ExpenseResponse?, vm: MainViewModel, onDone: () -> Un
                                     date = date.trim(),
                                     payerPersonId = payerId,
                                     totalAmount = amountValue,
-                                    meatAmount = if (type == "GLOBAL") 0.0 else decimalOrNull(meat) ?: 0.0,
-                                    alcoholAmount = if (type == "GLOBAL") 0.0 else decimalOrNull(alcohol) ?: 0.0,
-                                    customConstraintAmounts = if (type == "GLOBAL") emptyMap() else parseCustomAmountMap(customAmounts),
+                                    meatAmount = decimalOrNull(meat) ?: 0.0,
+                                    alcoholAmount = decimalOrNull(alcohol) ?: 0.0,
+                                    customConstraintAmounts = positiveCustomAmounts(customAmounts),
                                     type = type,
                                     advancedMode = advanced,
                                     manualParticipantIds = if (advanced) selectedParticipants else emptySet(),
@@ -319,8 +319,8 @@ fun ExpenseEssentialStep(
             OutlinedTextField(date, onDate, label = { Text("Date") }, modifier = Modifier.weight(1f), singleLine = true)
             MoneyField("Montant", amount, Modifier.weight(1f), onAmount)
         }
-        SegmentedChoice("Type de dépense", type, listOf("NORMAL" to "Normale", "GLOBAL" to "Globale"), onType)
-        Text("Une dépense globale ignore les parts viande/alcool/contraintes. Une dépense normale peut utiliser les règles RAV.", style = MaterialTheme.typography.bodySmall)
+        SegmentedChoice("Type de dépense", type, listOf("NORMAL" to "Datée", "GLOBAL" to "Mutualisée voyage"), onType)
+        Text("Une dépense datée utilise les présences du jour. Une dépense mutualisée voyage ignore les dates de présence, mais applique quand même les parts viande, alcool et contraintes.", style = MaterialTheme.typography.bodySmall)
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             OutlinedTextField(currency, onCurrency, label = { Text("Devise") }, modifier = Modifier.weight(1f), singleLine = true)
             MoneyField("Taux vers $tripCurrency", exchangeRate, Modifier.weight(1f), onExchangeRate)
@@ -385,25 +385,39 @@ fun ExpenseOptionsStep(
     onMeat: (String) -> Unit,
     alcohol: String,
     onAlcohol: (String) -> Unit,
-    customAmounts: String,
-    onCustomAmounts: (String) -> Unit,
+    customAmounts: Map<String, String>,
+    onCustomAmountChange: (String, String) -> Unit,
     trip: TripResponse,
     currency: String
 ) {
+    val constraintNames = trip.customConstraints.toList().sortedWith(String.CASE_INSENSITIVE_ORDER)
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Text("Options RAV", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-        if (type == "GLOBAL") {
-            EmptyCard("Cette dépense est globale : aucune ventilation viande, alcool ou contrainte personnalisée ne sera appliquée.")
+        Text(
+            if (type == "GLOBAL") {
+                "Ces champs restent actifs : la dépense est répartie sur tout le voyage, mais les personnes végétariennes, sans alcool ou avec une contrainte ne paient pas le bloc correspondant."
+            } else {
+                "Ces champs sont facultatifs. Laisse à 0 si la dépense doit être partagée normalement entre les personnes présentes."
+            },
+            style = MaterialTheme.typography.bodySmall
+        )
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            MoneyField("Part viande", meat, Modifier.weight(1f), onMeat)
+            MoneyField("Part alcool", alcohol, Modifier.weight(1f), onAlcohol)
+        }
+        if (constraintNames.isEmpty()) {
+            EmptyCard("Aucune contrainte personnalisée n’est déclarée sur ce voyage. Ajoute-les dans l’écran Voyage avant de saisir des montants par contrainte.")
         } else {
-            Text("Ces champs sont facultatifs. Laisse à 0 si la dépense doit être partagée normalement.", style = MaterialTheme.typography.bodySmall)
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                MoneyField("Part viande", meat, Modifier.weight(1f), onMeat)
-                MoneyField("Part alcool", alcohol, Modifier.weight(1f), onAlcohol)
+            Text("Parts par contrainte personnalisée", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
+            constraintNames.forEach { name ->
+                MoneyField(
+                    label = name,
+                    value = customAmounts[name].orEmpty(),
+                    modifier = Modifier.fillMaxWidth(),
+                    onChange = { onCustomAmountChange(name, it) }
+                )
             }
-            OutlinedTextField(customAmounts, onCustomAmounts, label = { Text("Contraintes : Vegan=12, PMR=5") }, modifier = Modifier.fillMaxWidth())
-            if (trip.customConstraints.isNotEmpty()) {
-                Text("Contraintes disponibles : ${trip.customConstraints.joinToString()} · devise : ${currency.ifBlank { trip.referenceCurrency }}", style = MaterialTheme.typography.bodySmall)
-            }
+            Text("Devise : ${currency.ifBlank { trip.referenceCurrency }}. Une part positive est payée uniquement par les personnes concernées qui n’ont pas coché cette contrainte.", style = MaterialTheme.typography.bodySmall)
         }
     }
 }
@@ -425,7 +439,7 @@ fun ExpenseReviewPanel(
             Text(if (title.isBlank()) "Libellé à renseigner" else title)
             Text("${money(amount, currency)} · payé par $payerName · $participantCount participant(s)")
             if (currency != tripCurrency) Text("Converti vers $tripCurrency avec le taux $exchangeRate")
-            Text(if (type == "GLOBAL") "Dépense globale" else "Dépense normale avec options RAV possibles")
+            Text(if (type == "GLOBAL") "Dépense mutualisée voyage avec options RAV possibles" else "Dépense datée avec options RAV possibles")
         }
     }
 }
@@ -443,6 +457,29 @@ fun PersonSelectableRow(label: String, detail: String, checked: Boolean, onChang
         }
     }
 }
+
+fun initialExpenseCustomAmounts(expense: ExpenseResponse?, trip: TripResponse): Map<String, String> {
+    val result = linkedMapOf<String, String>()
+    trip.customConstraints.toList().sortedWith(String.CASE_INSENSITIVE_ORDER).forEach { name ->
+        val value = expense?.customConstraintAmounts?.entries
+            ?.firstOrNull { it.key.equals(name, ignoreCase = true) }
+            ?.value
+            ?.toInput()
+            .orEmpty()
+        result[name] = value
+    }
+    expense?.customConstraintAmounts.orEmpty().forEach { (name, amount) ->
+        if (result.keys.none { it.equals(name, ignoreCase = true) }) {
+            result[name] = amount.toInput()
+        }
+    }
+    return result
+}
+
+fun positiveCustomAmounts(values: Map<String, String>): Map<String, Double> = values.mapNotNull { (name, rawValue) ->
+    val amount = decimalOrNull(rawValue) ?: return@mapNotNull null
+    if (name.isBlank() || amount <= 0.0) null else name to amount
+}.toMap()
 
 fun nextExpenseStep(step: ExpenseStep): ExpenseStep = when (step) {
     ExpenseStep.Essential -> ExpenseStep.Payer

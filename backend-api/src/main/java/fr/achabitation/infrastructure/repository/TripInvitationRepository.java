@@ -10,4 +10,5 @@ import java.util.UUID;
 public interface TripInvitationRepository extends JpaRepository<TripInvitationEntity, UUID> {
     Optional<TripInvitationEntity> findByCode(String code);
     List<TripInvitationEntity> findByTripIdOrderByCreatedAtDesc(UUID tripId);
+    List<TripInvitationEntity> findByCreatedByIdOrderByCreatedAtDesc(UUID createdById);
 }

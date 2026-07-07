@@ -2,9 +2,11 @@ package fr.achabitation.api.dto;
 
 import fr.achabitation.domain.model.WeightMode;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.PositiveOrZero;
 import jakarta.validation.constraints.Size;
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -27,43 +29,43 @@ public final class PersonDtos {
 
     public record PersonCreateRequest(
             @NotBlank @Size(max = 120) String name,
-            BigDecimal livingRest,
+            @PositiveOrZero @DecimalMax("999999999.99") BigDecimal livingRest,
             WeightMode weightMode,
             boolean advancedLivingRest,
-            BigDecimal netIncomeAfterTax,
-            BigDecimal rent,
-            BigDecimal credits,
-            BigDecimal fixedCharges,
-            BigDecimal transport,
-            BigDecimal insurance,
-            BigDecimal otherMandatoryExpenses,
-            BigDecimal menstrualProtection,
+            @PositiveOrZero @DecimalMax("999999999.99") BigDecimal netIncomeAfterTax,
+            @PositiveOrZero @DecimalMax("999999999.99") BigDecimal rent,
+            @PositiveOrZero @DecimalMax("999999999.99") BigDecimal credits,
+            @PositiveOrZero @DecimalMax("999999999.99") BigDecimal fixedCharges,
+            @PositiveOrZero @DecimalMax("999999999.99") BigDecimal transport,
+            @PositiveOrZero @DecimalMax("999999999.99") BigDecimal insurance,
+            @PositiveOrZero @DecimalMax("999999999.99") BigDecimal otherMandatoryExpenses,
+            @PositiveOrZero @DecimalMax("999999999.99") BigDecimal menstrualProtection,
             boolean vegetarian,
             boolean noAlcohol,
             boolean livingRestPublic,
-            Set<String> customConstraints,
-            @Valid @NotEmpty List<PresencePeriodRequest> presencePeriods
+            @Size(max = 50) Set<@NotBlank @Size(max = 120) String> customConstraints,
+            @Valid @NotEmpty @Size(max = 100) List<PresencePeriodRequest> presencePeriods
     ) {}
 
     public record PersonUpdateRequest(
             @NotBlank @Size(max = 120) String name,
-            BigDecimal livingRest,
+            @PositiveOrZero @DecimalMax("999999999.99") BigDecimal livingRest,
             WeightMode weightMode,
             boolean advancedLivingRest,
-            BigDecimal netIncomeAfterTax,
-            BigDecimal rent,
-            BigDecimal credits,
-            BigDecimal fixedCharges,
-            BigDecimal transport,
-            BigDecimal insurance,
-            BigDecimal otherMandatoryExpenses,
-            BigDecimal menstrualProtection,
+            @PositiveOrZero @DecimalMax("999999999.99") BigDecimal netIncomeAfterTax,
+            @PositiveOrZero @DecimalMax("999999999.99") BigDecimal rent,
+            @PositiveOrZero @DecimalMax("999999999.99") BigDecimal credits,
+            @PositiveOrZero @DecimalMax("999999999.99") BigDecimal fixedCharges,
+            @PositiveOrZero @DecimalMax("999999999.99") BigDecimal transport,
+            @PositiveOrZero @DecimalMax("999999999.99") BigDecimal insurance,
+            @PositiveOrZero @DecimalMax("999999999.99") BigDecimal otherMandatoryExpenses,
+            @PositiveOrZero @DecimalMax("999999999.99") BigDecimal menstrualProtection,
             boolean vegetarian,
             boolean noAlcohol,
             boolean livingRestPublic,
-            Set<String> customConstraints,
+            @Size(max = 50) Set<@NotBlank @Size(max = 120) String> customConstraints,
             boolean active,
-            @Valid @NotEmpty List<PresencePeriodRequest> presencePeriods
+            @Valid @NotEmpty @Size(max = 100) List<PresencePeriodRequest> presencePeriods
     ) {}
 
     public record LinkGuestRequest(
@@ -74,7 +76,7 @@ public final class PersonDtos {
     public record CurrentUserPersonCreateRequest(
             @Size(max = 120) String name,
             boolean applyProfileToPerson,
-            @Valid @NotEmpty List<PresencePeriodRequest> presencePeriods
+            @Valid @NotEmpty @Size(max = 100) List<PresencePeriodRequest> presencePeriods
     ) {}
 
     public record PersonResponse(

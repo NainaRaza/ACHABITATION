@@ -83,7 +83,7 @@ class BalanceCalculatorTest {
     }
 
     @Test
-    void globalExpenseIgnoresPresenceAndFoodPreferencesButKeepsRavWeighting() {
+    void globalExpenseIgnoresPresenceButKeepsRavWeightingWhenNoSpecificAmountsAreSet() {
         List<DomainPerson> persons = List.of(
                 person(sofiaId, "Sofia", "2000", WeightMode.LIVING_REST, false, false, true, fullStay()),
                 person(karimId, "Karim", "1000", WeightMode.LIVING_REST, true, false, true, List.of(period(AUG_10, AUG_10))),
@@ -97,6 +97,35 @@ class BalanceCalculatorTest {
         assertThat(shares.get(karimId)).isEqualByComparingTo("100.00");
         assertThat(shares.get(linaId)).isEqualByComparingTo("100.00");
         assertThat(sum(shares)).isEqualByComparingTo("400.00");
+    }
+
+    @Test
+    void globalExpenseIgnoresPresenceButAppliesMeatAlcoholAndCustomConstraints() {
+        DomainPerson sofia = new DomainPerson(sofiaId, "Sofia", new BigDecimal("1000"), WeightMode.LIVING_REST, false, false, Set.of(), true, fullStay());
+        DomainPerson karim = new DomainPerson(karimId, "Karim", new BigDecimal("1000"), WeightMode.LIVING_REST, true, false, Set.of("Sans porc"), true, List.of(period(AUG_10, AUG_10)));
+        DomainPerson lina = new DomainPerson(linaId, "Lina", new BigDecimal("1000"), WeightMode.LIVING_REST, false, true, Set.of(), true, List.of(period(AUG_10, AUG_10)));
+        DomainExpense expense = new DomainExpense(
+                UUID.randomUUID(),
+                "Courses pour tout le séjour",
+                AUG_03,
+                sofiaId,
+                new BigDecimal("120"),
+                new BigDecimal("30"),
+                new BigDecimal("20"),
+                Map.of("Sans porc", new BigDecimal("30")),
+                ExpenseType.GLOBAL,
+                false,
+                Set.of(),
+                "EUR",
+                BigDecimal.ONE
+        );
+
+        Map<UUID, BigDecimal> shares = calculator.calculateSharesForExpense(expense, List.of(sofia, karim, lina));
+
+        assertThat(shares.get(sofiaId)).isEqualByComparingTo("53.34");
+        assertThat(shares.get(karimId)).isEqualByComparingTo("23.33");
+        assertThat(shares.get(linaId)).isEqualByComparingTo("43.33");
+        assertThat(sum(shares)).isEqualByComparingTo("120.00");
     }
 
     @Test
@@ -253,6 +282,19 @@ class BalanceCalculatorTest {
         assertThatThrownBy(() -> calculator.validateExpenseHasParticipants(expense, persons))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("Dépense globale impossible");
+    }
+
+    @Test
+    void validationBlocksGlobalAlcoholAmountWhenNoEligibleAlcoholParticipantExistsEvenWithoutPresenceDate() {
+        List<DomainPerson> persons = List.of(
+                person(linaId, "Lina", "1000", WeightMode.LIVING_REST, false, true, true, List.of(period(AUG_10, AUG_10)))
+        );
+        DomainExpense expense = expense("Alcool pour le séjour", AUG_02, linaId, "20", "0", "20", ExpenseType.GLOBAL, false, Set.of(), "EUR", "1");
+
+        assertThatThrownBy(() -> calculator.validateExpenseHasParticipants(expense, persons))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Dépense globale impossible")
+                .hasMessageContaining("part alcool est positive");
     }
 
 

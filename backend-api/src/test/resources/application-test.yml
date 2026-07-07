@@ -19,3 +19,10 @@ logging:
   level:
     org.hibernate.SQL: WARN
     org.springframework.test: WARN
+
+
+achabitation:
+  auth:
+    require-email-verification: false
+  mail:
+    enabled: false

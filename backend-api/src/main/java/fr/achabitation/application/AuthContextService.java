@@ -1,34 +1,37 @@
 package fr.achabitation.application;
 
+import fr.achabitation.config.SessionTokenAuthenticationFilter;
 import fr.achabitation.infrastructure.entity.UserEntity;
 import fr.achabitation.infrastructure.repository.UserRepository;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.security.authentication.AuthenticationCredentialsNotFoundException;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.Duration;
-import java.time.Instant;
 import java.util.Optional;
+import java.util.UUID;
 
 @Service
 public class AuthContextService {
     private final UserRepository userRepository;
-    private final SessionTokenService sessionTokenService;
 
-    public AuthContextService(UserRepository userRepository, SessionTokenService sessionTokenService) {
+    public AuthContextService(UserRepository userRepository) {
         this.userRepository = userRepository;
-        this.sessionTokenService = sessionTokenService;
     }
 
     @Transactional(readOnly = true)
     public Optional<UserEntity> optionalUser(HttpServletRequest request) {
-        String token = tokenFromRequest(request);
-        if (token == null || token.isBlank()) {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || !authentication.isAuthenticated() || authentication.getPrincipal() == null) {
             return Optional.empty();
         }
-        Optional<UserEntity> user = userRepository.findBySessionTokenHash(sessionTokenService.hashToken(token))
-                .filter(this::tokenStillValid);
+        Optional<UUID> userId = parseUserId(authentication.getPrincipal());
+        if (userId.isEmpty()) {
+            return Optional.empty();
+        }
+        Optional<UserEntity> user = userRepository.findById(userId.get());
         user.ifPresent(value -> {
             value.getKnownCustomConstraints().size();
             value.getCustomConstraints().size();
@@ -41,22 +44,25 @@ public class AuthContextService {
         return optionalUser(request).orElseThrow(() -> new AuthenticationCredentialsNotFoundException("Authentification requise."));
     }
 
-    private boolean tokenStillValid(UserEntity user) {
-        if (user.getSessionTokenIssuedAt() == null) {
-            return false;
+    public Optional<UUID> currentSessionId(HttpServletRequest request) {
+        Object value = request == null ? null : request.getAttribute(SessionTokenAuthenticationFilter.CURRENT_SESSION_ID_ATTRIBUTE);
+        if (value instanceof UUID uuid) {
+            return Optional.of(uuid);
         }
-        return user.getSessionTokenIssuedAt().plus(Duration.ofDays(30)).isAfter(Instant.now());
+        return Optional.empty();
     }
 
-    private String tokenFromRequest(HttpServletRequest request) {
-        if (request == null) {
-            return null;
+    private Optional<UUID> parseUserId(Object principal) {
+        if (principal instanceof UUID uuid) {
+            return Optional.of(uuid);
         }
-        String authorization = request.getHeader("Authorization");
-        if (authorization != null && authorization.startsWith("Bearer ")) {
-            return authorization.substring("Bearer ".length()).trim();
+        if (principal instanceof String value && !value.isBlank() && !"anonymousUser".equals(value)) {
+            try {
+                return Optional.of(UUID.fromString(value));
+            } catch (IllegalArgumentException ignored) {
+                return Optional.empty();
+            }
         }
-        String sessionToken = request.getHeader("X-Session-Token");
-        return sessionToken == null ? null : sessionToken.trim();
+        return Optional.empty();
     }
 }

@@ -28,6 +28,14 @@ public class HealthController {
         );
     }
 
+    @GetMapping("/liveness")
+    public Map<String, Object> liveness() {
+        return Map.of(
+                "status", "ALIVE",
+                "timestamp", Instant.now().toString()
+        );
+    }
+
     @GetMapping("/readiness")
     public Map<String, Object> readiness() throws Exception {
         try (Connection connection = dataSource.getConnection(); Statement statement = connection.createStatement()) {

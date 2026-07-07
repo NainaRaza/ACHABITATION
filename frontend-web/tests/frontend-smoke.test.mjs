@@ -13,6 +13,7 @@ const stateModule = await import("../src/state.js");
 
 assert.equal(utils.canonicalConstraintName("  Sans   lactose  "), "Sans lactose");
 assert.equal(utils.constraintKey("Été  Sans   Gluten"), "ete sans gluten");
+assert.deepEqual(utils.parseCsvSet(" vegan, PMR; vegan\nSans porc "), ["vegan", "PMR", "Sans porc"]);
 assert.equal(utils.dateFr("2026-07-06"), "06/07/2026");
 
 stateModule.state.selectedTrip = { referenceCurrency: "EUR" };

@@ -7,7 +7,8 @@
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-<header class="topbar">
+<a class="skip-link" href="#mainContent">Aller au contenu principal</a>
+<header class="topbar" role="banner">
     <div class="brand-block">
         <p class="eyebrow">ACHABITATION</p>
         <h1>Gestion finance - partage au RAV</h1>
@@ -26,8 +27,8 @@
     </div>
 </header>
 
-<main class="app-shell">
-    <div id="messageBox" class="message hidden"></div>
+<main id="mainContent" class="app-shell" tabindex="-1">
+    <div id="messageBox" class="message hidden" role="status" aria-live="polite"></div>
 
     <section class="hero card">
         <div>
@@ -42,16 +43,16 @@
         </div>
     </section>
 
-    <nav class="tabs" aria-label="Navigation principale">
-        <button class="tab active" data-tab="dashboard" type="button">Tableau de bord</button>
-        <button class="tab" data-tab="persons" type="button">Participant·es</button>
-        <button class="tab" data-tab="expenses" type="button">Dépenses</button>
-        <button class="tab" data-tab="summary" type="button">Résumé</button>
-        <button class="tab" data-tab="settings" type="button">Paramètres</button>
-        <button class="tab" data-tab="audit" type="button">Historique</button>
+    <nav class="tabs" aria-label="Navigation principale" role="tablist">
+        <button class="tab active" data-tab="dashboard" type="button" role="tab" aria-controls="dashboardTab" aria-selected="true">Tableau de bord</button>
+        <button class="tab" data-tab="persons" type="button" role="tab" aria-controls="personsTab" aria-selected="false">Participant·es</button>
+        <button class="tab" data-tab="expenses" type="button" role="tab" aria-controls="expensesTab" aria-selected="false">Dépenses</button>
+        <button class="tab" data-tab="summary" type="button" role="tab" aria-controls="summaryTab" aria-selected="false">Résumé</button>
+        <button class="tab" data-tab="settings" type="button" role="tab" aria-controls="settingsTab" aria-selected="false">Paramètres</button>
+        <button class="tab" data-tab="audit" type="button" role="tab" aria-controls="auditTab" aria-selected="false">Historique</button>
     </nav>
 
-    <section id="dashboardTab" class="tab-panel active">
+    <section id="dashboardTab" role="tabpanel" class="tab-panel active">
         <div class="grid two responsive">
             <section class="card">
                 <div class="card-title-row">
@@ -77,6 +78,10 @@
                         <label>Devise de référence
                             <input id="tripCurrency" maxlength="3" minlength="3" type="text" value="EUR">
                         </label>
+                        <label>Contraintes personnalisées du voyage
+                            <input id="tripInitialConstraints" type="text" placeholder="Ex. vegan, PMR, sans porc">
+                        </label>
+                        <p class="small">Ces contraintes seront proposées ensuite comme cases à cocher sur les personnes et comme champs de montant dans les dépenses.</p>
                         <div class="actions">
                             <button type="submit">Créer le voyage</button>
                             <button id="closeTripFormBtn" type="button" class="secondary">Annuler</button>
@@ -127,7 +132,7 @@
         </div>
     </section>
 
-    <section id="personsTab" class="tab-panel">
+    <section id="personsTab" role="tabpanel" class="tab-panel">
         <section class="card">
             <div class="card-title-row">
                 <div>
@@ -240,7 +245,7 @@
         </section>
     </section>
 
-    <section id="expensesTab" class="tab-panel">
+    <section id="expensesTab" role="tabpanel" class="tab-panel">
         <section class="card">
             <div class="card-title-row">
                 <div>
@@ -281,18 +286,19 @@
                             <input id="expenseAlcohol" type="number" min="0" step="0.01" value="0">
                         </label>
                     </div>
+                    <p class="small">Une dépense datée utilise les présences du jour. Une dépense mutualisée voyage ignore les dates de présence, mais applique quand même les exclusions viande, alcool et contraintes.</p>
                     <div id="expenseCustomAmountsBlock" class="subcard">
                         <div class="field-header">
                             <span class="field-label">Montants liés aux contraintes personnalisées</span>
                         </div>
-                        <p class="small">Chaque montant sera réparti entre les personnes présentes qui n’ont pas coché la contrainte correspondante.</p>
+                        <p class="small">Chaque montant sera réparti entre les personnes concernées qui n’ont pas coché la contrainte correspondante.</p>
                         <div id="expenseCustomAmountRows" class="custom-amounts"></div>
                     </div>
                     <div class="grid two">
                         <label>Type
                             <select id="expenseType">
-                                <option value="NORMAL">Normale</option>
-                                <option value="GLOBAL">Globale</option>
+                                <option value="NORMAL">Datée</option>
+                                <option value="GLOBAL">Mutualisée voyage</option>
                             </select>
                         </label>
                         <label>Devise
@@ -332,7 +338,7 @@
         </section>
     </section>
 
-    <section id="summaryTab" class="tab-panel">
+    <section id="summaryTab" role="tabpanel" class="tab-panel">
         <section class="card">
             <div class="card-title-row">
                 <div>
@@ -359,7 +365,7 @@
         </section>
     </section>
 
-    <section id="settingsTab" class="tab-panel">
+    <section id="settingsTab" role="tabpanel" class="tab-panel">
         <div class="grid two responsive">
             <section class="card">
                 <h2>Paramètres du voyage</h2>
@@ -372,7 +378,7 @@
             </section>
             <section class="card">
                 <h2>Contraintes du voyage</h2>
-                <p class="muted">Liste officielle du voyage : elle évite les doublons du type “gluten free” / “sans gluten” quand ils désignent la même règle métier.</p>
+                <p class="muted">Ajoute ici les contraintes officielles du voyage. Elles apparaîtront ensuite automatiquement dans les personnes et dans les options RAV des dépenses.</p>
                 <div id="tripConstraintList" class="badge-list"></div>
                 <div class="inline-add">
                     <input id="newTripConstraintName" type="text" placeholder="Ex. sans porc">
@@ -419,6 +425,7 @@
                             <input id="loginPassword" type="password" placeholder="Mot de passe" autocomplete="current-password">
                         </label>
                         <button id="loginUserBtn" type="button">Se connecter</button>
+                        <button id="requestEmailVerificationBtn" type="button" class="secondary small-button">Renvoyer l’email de vérification</button>
                     </div>
                     <div class="subcard">
                         <h3>Créer un nouveau compte</h3>
@@ -434,6 +441,25 @@
                         <button id="createUserBtn" type="button">Créer mon compte</button>
                     </div>
                 </div>
+                <details class="subcard account-reset-panel">
+                    <summary>Mot de passe oublié</summary>
+                    <div class="grid two responsive">
+                        <label>Email du compte
+                            <input id="resetRequestEmail" type="email" placeholder="prenom@example.com" autocomplete="email">
+                        </label>
+                        <div class="field-actions">
+                            <button id="requestPasswordResetBtn" type="button" class="secondary">Demander un reset</button>
+                        </div>
+                        <label>Jeton reçu par email
+                            <input id="resetPasswordToken" type="text" autocomplete="one-time-code">
+                        </label>
+                        <label>Nouveau mot de passe
+                            <input id="resetPasswordNew" type="password" minlength="8" maxlength="120" autocomplete="new-password">
+                        </label>
+                    </div>
+                    <button id="confirmPasswordResetBtn" type="button" class="secondary">Réinitialiser le mot de passe</button>
+                    <p class="small">En production, le lien complet arrive par email. Si l’URL contient <code>?resetToken=...</code>, le jeton est rempli automatiquement.</p>
+                </details>
             </section>
 
             <section id="accountLoggedInPanel" class="card compact hidden">
@@ -446,10 +472,14 @@
                 </div>
                 <dl class="details-list compact-details">
                     <div><dt>Email</dt><dd id="accountEmailDisplay">—</dd></div>
+                    <div><dt>Email vérifié</dt><dd id="accountEmailVerifiedDisplay">—</dd></div>
                     <div><dt>Nom affiché</dt><dd id="accountDisplayNameDisplay">—</dd></div>
                 </dl>
                 <div class="actions account-actions">
                     <button id="showAccountEditBtn" type="button" class="secondary">Modifier email / nom</button>
+                    <button id="showPasswordChangeBtn" type="button" class="secondary">Changer le mot de passe</button>
+                    <button id="exportAccountBtn" type="button" class="secondary">Exporter mes données</button>
+                    <button id="deleteAccountBtn" type="button" class="danger">Supprimer mon compte</button>
                 </div>
                 <form id="accountEditForm" class="stack drawer hidden">
                     <div class="grid two">
@@ -465,11 +495,27 @@
                         <button id="cancelAccountEditBtn" type="button" class="secondary">Annuler</button>
                     </div>
                 </form>
+                <form id="passwordChangeForm" class="stack drawer hidden">
+                    <div class="grid two">
+                        <label>Mot de passe actuel
+                            <input id="currentPassword" type="password" required autocomplete="current-password">
+                        </label>
+                        <label>Nouveau mot de passe
+                            <input id="newPassword" type="password" required minlength="8" maxlength="120" autocomplete="new-password">
+                        </label>
+                    </div>
+                    <div class="actions">
+                        <button type="submit">Changer le mot de passe</button>
+                        <button id="cancelPasswordChangeBtn" type="button" class="secondary">Annuler</button>
+                    </div>
+                </form>
+
             </section>
 
             <section class="card compact" id="profileCard">
                 <h2>Mon profil RAV</h2>
                 <p class="muted">Ces données servent de profil de référence. Elles ne sont appliquées aux voyages liés que sur action explicite.</p>
+                <p class="small warning-text">Le RAV peut révéler indirectement une situation financière. Si tu ne coches pas “RAV visible”, les autres participants ne voient pas le détail financier ; les résumés non administrateurs sont aussi limités à leur propre solde.</p>
                 <form id="profileForm" class="stack">
                     <div class="grid two">
                         <label>Mode
@@ -519,7 +565,7 @@
         </div>
     </section>
 
-    <section id="auditTab" class="tab-panel">
+    <section id="auditTab" role="tabpanel" class="tab-panel">
         <section class="card">
             <div class="card-title-row">
                 <div>

@@ -180,12 +180,28 @@ fun MetricBox(label: String, value: String, modifier: Modifier = Modifier) {
 fun TripConstraintsCard(vm: MainViewModel) {
     val trip = vm.state.selectedTrip ?: return
     var constraints by remember(trip.id, trip.customConstraints) { mutableStateOf(trip.customConstraints.joinToString(", ")) }
+    var newConstraint by remember(trip.id) { mutableStateOf("") }
     ElevatedCard(modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Text("Contraintes du voyage", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-            Text("Ces contraintes peuvent ensuite être affectées aux personnes et aux dépenses.")
-            OutlinedTextField(constraints, { constraints = it }, label = { Text("Contraintes, séparées par virgule") }, modifier = Modifier.fillMaxWidth())
-            Button(onClick = { vm.updateTripConstraints(constraints) }, enabled = !vm.state.loading) { Text("Enregistrer les contraintes") }
+            Text("Ajoute ici les contraintes officielles du voyage. Elles seront ensuite cochables sur les personnes et proposées dans les options RAV des dépenses.")
+            if (trip.customConstraints.isNotEmpty()) {
+                Text("Actuelles : ${trip.customConstraints.toList().sortedWith(String.CASE_INSENSITIVE_ORDER).joinToString()}", style = MaterialTheme.typography.bodySmall)
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                OutlinedTextField(newConstraint, { newConstraint = it }, label = { Text("Nouvelle contrainte") }, modifier = Modifier.weight(1f), singleLine = true)
+                Button(
+                    onClick = {
+                        val updated = (parseCsvSet(constraints) + parseCsvSet(newConstraint)).joinToString(", ")
+                        constraints = updated
+                        newConstraint = ""
+                        vm.updateTripConstraints(updated)
+                    },
+                    enabled = newConstraint.isNotBlank() && !vm.state.loading
+                ) { Text("Ajouter") }
+            }
+            OutlinedTextField(constraints, { constraints = it }, label = { Text("Liste complète, séparée par virgules") }, modifier = Modifier.fillMaxWidth())
+            Button(onClick = { vm.updateTripConstraints(constraints) }, enabled = !vm.state.loading) { Text("Enregistrer la liste") }
         }
     }
 }

@@ -45,17 +45,17 @@ public class TripController {
     }
 
     @PostMapping("/join-by-code")
-    public TripResponse joinByCode(@RequestBody JoinTripByCodeRequest request, HttpServletRequest httpRequest) {
+    public TripResponse joinByCode(@Valid @RequestBody JoinTripByCodeRequest request, HttpServletRequest httpRequest) {
         return tripService.joinByCode(request, authContextService.requiredUser(httpRequest));
     }
 
     @PutMapping("/{tripId}/constraints")
-    public TripResponse updateConstraints(@PathVariable UUID tripId, @RequestBody TripConstraintUpdateRequest request, HttpServletRequest httpRequest) {
+    public TripResponse updateConstraints(@PathVariable UUID tripId, @Valid @RequestBody TripConstraintUpdateRequest request, HttpServletRequest httpRequest) {
         return tripService.updateConstraints(tripId, request, authContextService.requiredUser(httpRequest));
     }
 
     @PostMapping("/{tripId}/join")
-    public TripResponse join(@PathVariable UUID tripId, @RequestBody(required = false) JoinTripRequest request, HttpServletRequest httpRequest) {
+    public TripResponse join(@PathVariable UUID tripId, @Valid @RequestBody(required = false) JoinTripRequest request, HttpServletRequest httpRequest) {
         return tripService.join(tripId, request, authContextService.requiredUser(httpRequest));
     }
 

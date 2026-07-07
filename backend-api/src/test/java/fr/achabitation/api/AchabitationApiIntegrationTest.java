@@ -11,8 +11,17 @@ import org.springframework.http.MediaType;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
+import fr.achabitation.infrastructure.repository.UserRepository;
+import fr.achabitation.infrastructure.repository.PasswordResetTokenRepository;
+import fr.achabitation.infrastructure.repository.EmailVerificationTokenRepository;
+import fr.achabitation.infrastructure.repository.UserSessionRepository;
+import fr.achabitation.application.SessionTokenService;
+import fr.achabitation.infrastructure.entity.PasswordResetTokenEntity;
+import fr.achabitation.infrastructure.entity.EmailVerificationTokenEntity;
+import fr.achabitation.infrastructure.entity.UserEntity;
 import org.springframework.test.web.servlet.MvcResult;
 
+import java.time.Instant;
 import java.util.UUID;
 
 import static org.hamcrest.Matchers.contains;
@@ -21,6 +30,8 @@ import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.greaterThanOrEqualTo;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.nullValue;
+import static org.hamcrest.Matchers.not;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
@@ -38,6 +49,21 @@ class AchabitationApiIntegrationTest {
 
     @Autowired
     private ObjectMapper objectMapper;
+
+    @Autowired
+    private UserRepository userRepository;
+
+    @Autowired
+    private PasswordResetTokenRepository passwordResetTokenRepository;
+
+    @Autowired
+    private EmailVerificationTokenRepository emailVerificationTokenRepository;
+
+    @Autowired
+    private UserSessionRepository userSessionRepository;
+
+    @Autowired
+    private SessionTokenService sessionTokenService;
 
     @Test
     void betaFlowCreatesTripPersonsExpensesSummaryExportsAndAuditLogs() throws Exception {
@@ -164,6 +190,61 @@ class AchabitationApiIntegrationTest {
     }
 
     @Test
+    void globalExpensePersistsCustomConstraintAmountsAndUsesThemInSummary() throws Exception {
+        AuthSession owner = registerUser("global-custom-owner@example.com");
+        UUID tripId = createTrip(owner);
+
+        UUID sofiaId = createPerson(owner, tripId, simplePersonJson("Sofia", "1000"));
+        createPerson(owner, tripId, """
+                {
+                  "name": "Karim",
+                  "livingRest": 1000,
+                  "weightMode": "LIVING_REST",
+                  "advancedLivingRest": false,
+                  "vegetarian": false,
+                  "noAlcohol": false,
+                  "customConstraints": ["Sans porc"],
+                  "presencePeriods": [
+                    {"startDate": "2026-08-10", "endDate": "2026-08-15"}
+                  ]
+                }
+                """);
+        createPerson(owner, tripId, simplePersonJson("Lina", "1000"));
+
+        createExpense(owner, tripId, """
+                {
+                  "title": "Courses mutualisées avec contrainte",
+                  "date": "2026-08-02",
+                  "payerPersonId": "%s",
+                  "totalAmount": 120,
+                  "meatAmount": 0,
+                  "alcoholAmount": 0,
+                  "customConstraintAmounts": {"Sans porc": 30},
+                  "type": "GLOBAL",
+                  "advancedMode": false,
+                  "manualParticipantIds": [],
+                  "currency": "EUR",
+                  "exchangeRateToTripCurrency": 1
+                }
+                """.formatted(sofiaId));
+
+        mockMvc.perform(get("/api/v1/trips/{tripId}/expenses", tripId)
+                        .header(HttpHeaders.AUTHORIZATION, bearer(owner)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", hasSize(1)))
+                .andExpect(jsonPath("$[0].type").value("GLOBAL"))
+                .andExpect(jsonPath("$[0].customConstraintAmounts['Sans porc']").value(30.0));
+
+        mockMvc.perform(get("/api/v1/trips/{tripId}/summary", tripId)
+                        .header(HttpHeaders.AUTHORIZATION, bearer(owner)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.balances[?(@.personName == 'Sofia')].totalOwed", contains(45.0)))
+                .andExpect(jsonPath("$.balances[?(@.personName == 'Karim')].totalOwed", contains(30.0)))
+                .andExpect(jsonPath("$.balances[?(@.personName == 'Lina')].totalOwed", contains(45.0)))
+                .andExpect(jsonPath("$.balances[?(@.personName == 'Sofia')].balance", contains(75.0)));
+    }
+
+    @Test
     void authenticationAndTripMembershipAreRequired() throws Exception {
         AuthSession owner = registerUser("security-owner@example.com");
         AuthSession outsider = registerUser("security-outsider@example.com");
@@ -175,8 +256,38 @@ class AchabitationApiIntegrationTest {
         mockMvc.perform(get("/api/v1/trips/{tripId}/persons", tripId)
                         .header(HttpHeaders.AUTHORIZATION, bearer(outsider)))
                 .andExpect(status().isForbidden());
+
+        mockMvc.perform(get("/api/v1/trips/{tripId}/exports/expenses.csv", tripId)
+                        .header(HttpHeaders.AUTHORIZATION, bearer(outsider)))
+                .andExpect(status().isForbidden());
+
+        mockMvc.perform(get("/api/v1/trips/{tripId}/exports/summary.csv", tripId)
+                        .header(HttpHeaders.AUTHORIZATION, bearer(outsider)))
+                .andExpect(status().isForbidden());
+
+        mockMvc.perform(get("/api/v1/trips/{tripId}/audit-logs", tripId)
+                        .header(HttpHeaders.AUTHORIZATION, bearer(outsider)))
+                .andExpect(status().isForbidden());
+
+        mockMvc.perform(get("/api/v1/trips/{tripId}/invitations", tripId)
+                        .header(HttpHeaders.AUTHORIZATION, bearer(outsider)))
+                .andExpect(status().isForbidden());
     }
 
+    @Test
+    void expiredAccessTokenIsRejected() throws Exception {
+        AuthSession owner = registerUser("expired-token-owner@example.com");
+
+        userSessionRepository.findByUserIdAndRevokedAtIsNullOrderByLastUsedAtDesc(owner.userId()).forEach(session -> {
+            session.setExpiresAt(Instant.now().minusSeconds(60));
+            userSessionRepository.save(session);
+        });
+
+        mockMvc.perform(get("/api/v1/auth/profile")
+                        .header(HttpHeaders.AUTHORIZATION, bearer(owner)))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.details[0]").value("Authentification requise."));
+    }
 
     @Test
     void logoutInvalidatesAccessToken() throws Exception {
@@ -288,6 +399,15 @@ class AchabitationApiIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[?(@.name == 'Nvoskerjen guest')].livingRest", contains(1900.0)))
                 .andExpect(jsonPath("$[?(@.name == 'Nvoskerjen guest')].noAlcohol", contains(true)));
+
+        mockMvc.perform(get("/api/v1/trips/{tripId}/audit-logs", tripId)
+                        .header(HttpHeaders.AUTHORIZATION, bearer(member)))
+                .andExpect(status().isForbidden());
+
+        mockMvc.perform(get("/api/v1/trips/{tripId}/audit-logs", tripId)
+                        .header(HttpHeaders.AUTHORIZATION, bearer(owner)))
+                .andExpect(status().isOk())
+                .andExpect(content().string(not(containsString("privacy-member@example.com"))));
     }
 
     @Test
@@ -351,6 +471,174 @@ class AchabitationApiIntegrationTest {
                                 { "customConstraints": ["Sans lactose"] }
                                 """))
                 .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void passwordChangeRotatesTokenAndOldTokenIsRejected() throws Exception {
+        AuthSession owner = registerUser("password-owner@example.com");
+
+        MvcResult result = mockMvc.perform(put("/api/v1/auth/password")
+                        .header(HttpHeaders.AUTHORIZATION, bearer(owner))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "currentPassword": "motdepassefort",
+                                  "newPassword": "nouveauMotdepasseFort"
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.accessToken").exists())
+                .andExpect(jsonPath("$.note", containsString("Mot de passe modifié")))
+                .andReturn();
+        AuthSession rotated = new AuthSession(owner.userId(), read(result).get("accessToken").asText());
+
+        mockMvc.perform(get("/api/v1/auth/profile")
+                        .header(HttpHeaders.AUTHORIZATION, bearer(owner)))
+                .andExpect(status().isUnauthorized());
+
+        mockMvc.perform(get("/api/v1/auth/profile")
+                        .header(HttpHeaders.AUTHORIZATION, bearer(rotated)))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void emailVerificationTokenConfirmsEmailAndReturnsSession() throws Exception {
+        AuthSession owner = registerUser("verify-owner@example.com");
+        String rawToken = "valid-email-verification-token";
+        createEmailVerificationToken(owner.userId(), "verify-owner@example.com", rawToken, Instant.now().plusSeconds(3600), null);
+
+        MvcResult result = mockMvc.perform(post("/api/v1/auth/email/verify")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                { "token": "%s" }
+                                """.formatted(rawToken)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.emailVerified").value(true))
+                .andExpect(jsonPath("$.accessToken").exists())
+                .andReturn();
+
+        AuthSession verified = new AuthSession(owner.userId(), read(result).get("accessToken").asText());
+        mockMvc.perform(get("/api/v1/auth/profile")
+                        .header(HttpHeaders.AUTHORIZATION, bearer(verified)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.emailVerified").value(true));
+    }
+
+    @Test
+    void passwordResetRejectsExpiredAndUsedTokensAndInvalidatesExistingSessions() throws Exception {
+        AuthSession owner = registerUser("reset-owner@example.com");
+        AuthSession secondSession = loginUser("reset-owner@example.com");
+
+        String expiredToken = "expired-reset-token";
+        createPasswordResetToken(owner.userId(), expiredToken, Instant.now().minusSeconds(3600), null);
+        mockMvc.perform(post("/api/v1/auth/password/reset")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "token": "%s",
+                                  "newPassword": "nouveauMotdepasseFort"
+                                }
+                                """.formatted(expiredToken)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.details[0]", containsString("invalide ou expiré")));
+
+        String usedToken = "used-reset-token";
+        createPasswordResetToken(owner.userId(), usedToken, Instant.now().plusSeconds(3600), Instant.now());
+        mockMvc.perform(post("/api/v1/auth/password/reset")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "token": "%s",
+                                  "newPassword": "nouveauMotdepasseFort"
+                                }
+                                """.formatted(usedToken)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.details[0]", containsString("invalide ou expiré")));
+
+        String validToken = "valid-reset-token";
+        createPasswordResetToken(owner.userId(), validToken, Instant.now().plusSeconds(3600), null);
+        MvcResult result = mockMvc.perform(post("/api/v1/auth/password/reset")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "token": "%s",
+                                  "newPassword": "nouveauMotdepasseFort"
+                                }
+                                """.formatted(validToken)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.accessToken").exists())
+                .andReturn();
+        AuthSession resetSession = new AuthSession(owner.userId(), read(result).get("accessToken").asText());
+
+        mockMvc.perform(get("/api/v1/auth/profile").header(HttpHeaders.AUTHORIZATION, bearer(owner)))
+                .andExpect(status().isUnauthorized());
+        mockMvc.perform(get("/api/v1/auth/profile").header(HttpHeaders.AUTHORIZATION, bearer(secondSession)))
+                .andExpect(status().isUnauthorized());
+        mockMvc.perform(get("/api/v1/auth/profile").header(HttpHeaders.AUTHORIZATION, bearer(resetSession)))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void multiSessionListSpecificRevokeAndGlobalRevokeWork() throws Exception {
+        AuthSession owner = registerUser("session-owner@example.com");
+        AuthSession secondSession = loginUser("session-owner@example.com");
+
+        MvcResult sessionsResult = mockMvc.perform(get("/api/v1/auth/sessions")
+                        .header(HttpHeaders.AUTHORIZATION, bearer(owner)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", hasSize(greaterThanOrEqualTo(2))))
+                .andReturn();
+        JsonNode sessions = read(sessionsResult);
+        String secondSessionId = null;
+        for (JsonNode session : sessions) {
+            if (!session.get("current").asBoolean()) {
+                secondSessionId = session.get("sessionId").asText();
+                break;
+            }
+        }
+        org.junit.jupiter.api.Assertions.assertNotNull(secondSessionId);
+
+        mockMvc.perform(delete("/api/v1/auth/sessions/{sessionId}", secondSessionId)
+                        .header(HttpHeaders.AUTHORIZATION, bearer(owner)))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(get("/api/v1/auth/profile").header(HttpHeaders.AUTHORIZATION, bearer(secondSession)))
+                .andExpect(status().isUnauthorized());
+        mockMvc.perform(get("/api/v1/auth/profile").header(HttpHeaders.AUTHORIZATION, bearer(owner)))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(delete("/api/v1/auth/sessions")
+                        .header(HttpHeaders.AUTHORIZATION, bearer(owner)))
+                .andExpect(status().isOk());
+        mockMvc.perform(get("/api/v1/auth/profile").header(HttpHeaders.AUTHORIZATION, bearer(owner)))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void accountExportAndDeletionAnonymizePersonalData() throws Exception {
+        AuthSession owner = registerUser("rgpd-owner@example.com");
+        UUID tripId = createTrip(owner);
+        createPerson(owner, tripId, simplePersonJson("RGPD Owner", "1500"));
+
+        mockMvc.perform(get("/api/v1/auth/export")
+                        .header(HttpHeaders.AUTHORIZATION, bearer(owner)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.email").value("rgpd-owner@example.com"))
+                .andExpect(jsonPath("$.trips", hasSize(1)))
+                .andExpect(jsonPath("$.exportedAt").exists());
+
+        mockMvc.perform(delete("/api/v1/auth/account")
+                        .header(HttpHeaders.AUTHORIZATION, bearer(owner)))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(get("/api/v1/auth/profile")
+                        .header(HttpHeaders.AUTHORIZATION, bearer(owner)))
+                .andExpect(status().isUnauthorized());
+
+        userRepository.findById(owner.userId()).ifPresent(user -> {
+            org.junit.jupiter.api.Assertions.assertTrue(user.getEmail().startsWith("deleted-"));
+            org.junit.jupiter.api.Assertions.assertNull(user.getSessionTokenHash());
+        });
     }
 
     @Test
@@ -474,6 +762,27 @@ class AchabitationApiIntegrationTest {
                                 """.formatted(sofiaId)))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.details[0]", containsString("dépasser le total")));
+
+        mockMvc.perform(post("/api/v1/trips/{tripId}/expenses", tripId)
+                        .header(HttpHeaders.AUTHORIZATION, bearer(owner))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "title": "Dépense négative",
+                                  "date": "2026-08-02",
+                                  "payerPersonId": "%s",
+                                  "totalAmount": -1,
+                                  "meatAmount": 0,
+                                  "alcoholAmount": 0,
+                                  "type": "NORMAL",
+                                  "advancedMode": false,
+                                  "manualParticipantIds": [],
+                                  "currency": "EUR",
+                                  "exchangeRateToTripCurrency": 1
+                                }
+                                """.formatted(sofiaId)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.details[0]", containsString("totalAmount")));
     }
 
     private AuthSession registerUser(String email) throws Exception {
@@ -546,6 +855,45 @@ class AchabitationApiIntegrationTest {
                 .andExpect(jsonPath("$.code").exists())
                 .andReturn();
         return read(result).get("code").asText();
+    }
+
+    private AuthSession loginUser(String email) throws Exception {
+        MvcResult result = mockMvc.perform(post("/api/v1/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "email": "%s",
+                                  "password": "motdepassefort"
+                                }
+                                """.formatted(email)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.accessToken").exists())
+                .andReturn();
+        JsonNode auth = read(result);
+        return new AuthSession(UUID.fromString(auth.get("userId").asText()), auth.get("accessToken").asText());
+    }
+
+    private void createEmailVerificationToken(UUID userId, String email, String rawToken, Instant expiresAt, Instant usedAt) {
+        UserEntity user = userRepository.findById(userId).orElseThrow();
+        EmailVerificationTokenEntity token = new EmailVerificationTokenEntity();
+        token.setUser(user);
+        token.setEmail(email);
+        token.setTokenHash(sessionTokenService.hashToken(rawToken));
+        token.setCreatedAt(Instant.now());
+        token.setExpiresAt(expiresAt);
+        token.setUsedAt(usedAt);
+        emailVerificationTokenRepository.save(token);
+    }
+
+    private void createPasswordResetToken(UUID userId, String rawToken, Instant expiresAt, Instant usedAt) {
+        UserEntity user = userRepository.findById(userId).orElseThrow();
+        PasswordResetTokenEntity token = new PasswordResetTokenEntity();
+        token.setUser(user);
+        token.setTokenHash(sessionTokenService.hashToken(rawToken));
+        token.setCreatedAt(Instant.now());
+        token.setExpiresAt(expiresAt);
+        token.setUsedAt(usedAt);
+        passwordResetTokenRepository.save(token);
     }
 
     private String simplePersonJson(String name, String livingRest) {

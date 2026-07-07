@@ -127,7 +127,7 @@ Corrections appliquées :
 
 ## Points encore fragiles
 
-- Pas de vraie CI Android dans `.github/workflows/ci.yml`.
+- CI Android présente dans `.github/workflows/ci.yml`, validation externe encore à confirmer.
 - Pas de tests E2E web avec navigateur réel.
 - Pas de refresh token ni rotation de session.
 - Rate limiting non distribué.

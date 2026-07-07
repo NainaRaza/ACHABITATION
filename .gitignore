@@ -26,3 +26,9 @@ Thumbs.db
 
 # Environment
 .env
+
+# Backups / exports sensibles
+backups/
+*.dump
+*.sql
+*.backup

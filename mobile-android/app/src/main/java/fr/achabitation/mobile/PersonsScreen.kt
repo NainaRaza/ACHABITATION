@@ -127,7 +127,7 @@ fun PersonEditor(person: PersonResponse?, vm: MainViewModel, onDone: () -> Unit)
     var noAlcohol by remember(person?.id) { mutableStateOf(person?.noAlcohol ?: false) }
     var ravPublic by remember(person?.id) { mutableStateOf(person?.livingRestPublic ?: true) }
     var active by remember(person?.id) { mutableStateOf(person?.active ?: true) }
-    var constraints by remember(person?.id) { mutableStateOf(person?.customConstraints?.joinToString(", ").orEmpty()) }
+    var selectedConstraints by remember(person?.id, trip.customConstraints) { mutableStateOf(person?.customConstraints.orEmpty()) }
     val firstPeriod = person?.presencePeriods?.firstOrNull()
     var presenceStart by remember(person?.id) { mutableStateOf(firstPeriod?.startDate ?: trip.startDate) }
     var presenceEnd by remember(person?.id) { mutableStateOf(firstPeriod?.endDate ?: trip.endDate) }
@@ -165,8 +165,11 @@ fun PersonEditor(person: PersonResponse?, vm: MainViewModel, onDone: () -> Unit)
     CheckRow("Sans alcool", noAlcohol) { noAlcohol = it }
     CheckRow("RAV visible", ravPublic) { ravPublic = it }
     if (person != null) CheckRow("Active", active) { active = it }
-    OutlinedTextField(constraints, { constraints = it }, label = { Text("Contraintes personnalisées") }, modifier = Modifier.fillMaxWidth())
-    if (trip.customConstraints.isNotEmpty()) Text("Contraintes disponibles : ${trip.customConstraints.joinToString()}")
+    TripConstraintCheckboxes(
+        availableConstraints = trip.customConstraints,
+        selectedConstraints = selectedConstraints,
+        onSelectedConstraintsChange = { selectedConstraints = it }
+    )
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         Button(
             onClick = {
@@ -190,7 +193,7 @@ fun PersonEditor(person: PersonResponse?, vm: MainViewModel, onDone: () -> Unit)
                         vegetarian = vegetarian,
                         noAlcohol = noAlcohol,
                         livingRestPublic = ravPublic,
-                        customConstraints = parseCsvSet(constraints),
+                        customConstraints = selectedConstraints,
                         active = active,
                         presencePeriods = periods
                     )
@@ -216,6 +219,28 @@ fun PersonEditor(person: PersonResponse?, vm: MainViewModel, onDone: () -> Unit)
             },
             onDismiss = { confirmDisable = false }
         )
+    }
+}
+
+@Composable
+fun TripConstraintCheckboxes(
+    availableConstraints: Set<String>,
+    selectedConstraints: Set<String>,
+    onSelectedConstraintsChange: (Set<String>) -> Unit
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Text("Contraintes personnalisées", fontWeight = FontWeight.Bold)
+        if (availableConstraints.isEmpty()) {
+            EmptyCard("Aucune contrainte personnalisée n’est encore déclarée sur ce voyage. Ajoute-les dans l’écran Voyage pour pouvoir les cocher ici.")
+        } else {
+            Text("Coche les contraintes qui concernent cette personne.", style = MaterialTheme.typography.bodySmall)
+            availableConstraints.toList().sortedWith(String.CASE_INSENSITIVE_ORDER).forEach { name ->
+                val checked = selectedConstraints.any { it.equals(name, ignoreCase = true) }
+                CheckRow(name, checked) {
+                    onSelectedConstraintsChange(if (checked) selectedConstraints.filterNot { it.equals(name, ignoreCase = true) }.toSet() else selectedConstraints + name)
+                }
+            }
+        }
     }
 }
 

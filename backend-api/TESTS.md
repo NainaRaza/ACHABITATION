@@ -43,7 +43,9 @@ backend-api/data/achabitation.mv.db
 
 - scénario bêta complet : compte, voyage, personnes, dépenses, résumé, exports et audit ;
 - authentification obligatoire ;
-- refus d’accès pour un utilisateur non membre ;
+- rejet explicite des tokens expirés ;
+- invalidation serveur du token au logout ;
+- refus d’accès pour un utilisateur non membre sur personnes, exports, audit logs et invitations ;
 - invitations et adhésion à un voyage ;
 - liaison guest ↔ compte sans écrasement automatique ;
 - application explicite du profil à une personne liée ;
@@ -71,7 +73,7 @@ Sous PowerShell :
 powershell -ExecutionPolicy Bypass -File .\scripts\smoke-test.ps1
 ```
 
-Le smoke test crée un compte, un voyage, des participant·es, des dépenses, un résumé, une invitation, un second compte, des exports CSV et vérifie l’audit.
+Le smoke test crée un compte, un voyage, des participant·es, des dépenses, un résumé, une invitation, un second compte, des exports CSV, vérifie l’audit puis contrôle que le logout invalide le token.
 
 ## Résultat attendu
 

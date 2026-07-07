@@ -115,9 +115,7 @@ public class ExpenseService {
         expense.setMeatAmount(meat);
         expense.setAlcoholAmount(alcohol);
         expense.getCustomConstraintAmounts().clear();
-        if (request.type() == null || request.type() == ExpenseType.NORMAL) {
-            expense.getCustomConstraintAmounts().putAll(customConstraintAmounts);
-        }
+        expense.getCustomConstraintAmounts().putAll(customConstraintAmounts);
         expense.setType(request.type() == null ? ExpenseType.NORMAL : request.type());
         expense.setAdvancedMode(request.advancedMode());
         expense.setCurrency(request.currency() == null || request.currency().isBlank() ? expense.getTrip().getReferenceCurrency() : request.currency().trim().toUpperCase());

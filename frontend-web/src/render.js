@@ -22,18 +22,31 @@ ctx.init = async function () {
     } else {
         ctx.renderAll();
     }
+    await ctx.handleAccountActionTokens();
 };
 
 ctx.bindEvents = function () {
     $("loginUserBtn")?.addEventListener("click", ctx.loginUser);
     $("createUserBtn")?.addEventListener("click", ctx.createUser);
     $("logoutUserBtn")?.addEventListener("click", ctx.logoutUser);
+    $("requestPasswordResetBtn")?.addEventListener("click", ctx.requestPasswordReset);
+    $("confirmPasswordResetBtn")?.addEventListener("click", ctx.confirmPasswordReset);
+    $("requestEmailVerificationBtn")?.addEventListener("click", ctx.requestEmailVerification);
     $("showAccountEditBtn")?.addEventListener("click", () => ctx.showPanel("accountEditForm"));
+    $("showPasswordChangeBtn")?.addEventListener("click", () => ctx.showPanel("passwordChangeForm"));
+    $("exportAccountBtn")?.addEventListener("click", ctx.exportAccountData);
+    $("deleteAccountBtn")?.addEventListener("click", ctx.deleteAccount);
     $("cancelAccountEditBtn")?.addEventListener("click", () => {
         ctx.hydrateUserUi();
         ctx.hidePanel("accountEditForm");
     });
+    $("cancelPasswordChangeBtn")?.addEventListener("click", () => {
+        $("currentPassword").value = "";
+        $("newPassword").value = "";
+        ctx.hidePanel("passwordChangeForm");
+    });
     $("accountEditForm")?.addEventListener("submit", ctx.updateAccount);
+    $("passwordChangeForm")?.addEventListener("submit", ctx.changePassword);
     ["loginIdentifier", "loginPassword"].forEach(id => $(id)?.addEventListener("keydown", event => {
         if (event.key === "Enter") {
             event.preventDefault();
@@ -137,7 +150,11 @@ ctx.bindEvents = function () {
 };
 
 ctx.activateTab = function (tab) {
-    document.querySelectorAll(".tab").forEach(b => b.classList.toggle("active", b.dataset.tab === tab));
+    document.querySelectorAll(".tab").forEach(b => {
+        const active = b.dataset.tab === tab;
+        b.classList.toggle("active", active);
+        b.setAttribute("aria-selected", active ? "true" : "false");
+    });
     document.querySelectorAll(".tab-panel").forEach(panel => panel.classList.remove("active"));
     $(`${tab}Tab`).classList.add("active");
     if (tab === "summary") ctx.loadSummary();

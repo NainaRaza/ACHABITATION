@@ -1,7 +1,7 @@
 import { state, writeJson, asArray } from "./src/state.js";
 import { api, fetchBlob } from "./src/api.js";
 import { $, showMessage, showApiError } from "./src/ui.js";
-import { money, dateFr, selectedCurrency, canonicalConstraintName, constraintKey } from "./src/utils.js";
+import { money, dateFr, selectedCurrency, canonicalConstraintName, constraintKey, parseCsvSet } from "./src/utils.js";
 
 import { install as installFormHelpers } from "./src/form-helpers.js";
 import { install as installConstraints } from "./src/constraints.js";
@@ -28,7 +28,8 @@ const app = {
     dateFr,
     selectedCurrency,
     canonicalConstraintName,
-    constraintKey
+    constraintKey,
+    parseCsvSet
 };
 
 [

@@ -166,8 +166,8 @@ public class TripService {
         }
         person = personRepository.save(person);
         String detail = applyProfileToGuest
-                ? "Le guest " + person.getName() + " est lié au compte " + user.getEmail() + " et le profil a été appliqué."
-                : "Le guest " + person.getName() + " est lié au compte " + user.getEmail() + " sans écraser ses données.";
+                ? "Le guest " + person.getName() + " est lié à un compte utilisateur et le profil a été appliqué."
+                : "Le guest " + person.getName() + " est lié à un compte utilisateur sans écraser ses données.";
         auditService.log(trip, user, AuditAction.PERSON_LINKED_TO_USER, "PERSON", person.getId(), detail);
         return person;
     }

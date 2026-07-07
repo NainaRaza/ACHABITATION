@@ -27,7 +27,7 @@ ctx.createTrip = async function (event) {
         endDate: $("tripEndDate").value || null,
         referenceCurrency: $("tripCurrency").value.trim().toUpperCase() || "EUR",
         ownerUserId: state.user.userId,
-        customConstraints: []
+        customConstraints: ctx.parseCsvSet ? ctx.parseCsvSet($("tripInitialConstraints")?.value || "") : []
     };
 
     try {

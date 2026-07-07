@@ -86,7 +86,7 @@ src/render.js      navigation, rendu global, bind events
 - création de guests ;
 - ajout direct du compte courant comme personne ;
 - liaison d’un guest au compte courant ;
-- dépenses normales, globales et avancées ;
+- dépenses datées, mutualisées voyage et avancées ;
 - résumé des soldes ;
 - exports CSV ;
 - audit logs.
@@ -111,9 +111,21 @@ Le script exécute :
 
 ```text
 node --check app.js
+node --check playwright.config.mjs
 node --check src/*.js
+node --check tests/e2e/*.js
 node tests/frontend-smoke.test.mjs
 node tests/frontend-flow.test.mjs
 ```
 
-Ces tests vérifient la syntaxe, quelques utilitaires et un parcours principal mocké. Ils ne remplacent pas des tests E2E navigateur.
+Ces tests vérifient la syntaxe, quelques utilitaires et un parcours principal mocké.
+
+Des tests navigateur Playwright sont également préparés :
+
+```bash
+npm install
+npx playwright install chromium
+npm run test:e2e
+```
+
+Ils couvrent les parcours inscription → voyage → participant → dépense → résumé, erreur de connexion, et logout serveur. Ils nécessitent l'installation des dépendances npm et des navigateurs Playwright ; ils ne sont donc pas exécutables dans un environnement sans accès Internet.

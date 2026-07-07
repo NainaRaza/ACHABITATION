@@ -39,7 +39,7 @@ fr/achabitation/infrastructure  entités JPA et repositories
 
 ### Couche `domain`
 
-La couche domaine ne dépend pas de Spring. Elle contient les règles de calcul : personnes actives, dates de présence, dépenses normales/globales/avancées, exclusions viande/alcool/contraintes, RAV classique, poids moyen, devises, soldes et remboursements.
+La couche domaine ne dépend pas de Spring. Elle contient les règles de calcul : personnes actives, dates de présence, dépenses datées/mutualisées voyage/avancées, exclusions viande/alcool/contraintes, RAV classique, poids moyen, devises, soldes et remboursements.
 
 ### Couche `application`
 
@@ -87,7 +87,7 @@ Le frontend est servi séparément du backend sur `http://localhost:5173` et app
 
 ## Android
 
-`mobile-android/` contient un client Kotlin / Jetpack Compose. Le token est stocké via `EncryptedSharedPreferences`. Le HTTP cleartext est autorisé en debug pour le backend local et refusé en release.
+`mobile-android/` contient un client Kotlin / Jetpack Compose. Le token est stocké via `EncryptedSharedPreferences`. Le HTTP cleartext est autorisé en debug pour le backend local et refusé en release. La déconnexion mobile appelle le backend avant nettoyage local de session.
 
 Structure principale :
 
@@ -125,7 +125,7 @@ SecurePreferences.kt     stockage local chiffré
 
 ## Limites assumées
 
-- Pas encore de CI Android.
+- CI Android présente, à valider sur runner GitHub Actions ou machine propre.
 - Pas de tests E2E navigateur.
 - Pas de refresh token.
 - Rate limiting non distribué.

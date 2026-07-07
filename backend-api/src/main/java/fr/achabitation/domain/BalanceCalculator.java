@@ -41,15 +41,6 @@ public class BalanceCalculator {
             return shares;
         }
 
-        if (expense.type() == ExpenseType.GLOBAL) {
-            List<DomainPerson> globalParticipants = persons.stream()
-                    .filter(DomainPerson::active)
-                    .filter(this::canParticipateInAllocation)
-                    .toList();
-            addAllocation(shares, amountInTripCurrency(expense.totalAmount(), expense.exchangeRateToTripCurrency()), globalParticipants);
-            return shares;
-        }
-
         BigDecimal rate = safeRate(expense.exchangeRateToTripCurrency());
         BigDecimal meat = amountInTripCurrency(expense.meatAmount(), rate);
         BigDecimal alcohol = amountInTripCurrency(expense.alcoholAmount(), rate);
@@ -61,25 +52,25 @@ public class BalanceCalculator {
             general = ZERO;
         }
 
-        List<DomainPerson> present = persons.stream()
+        List<DomainPerson> baseParticipants = persons.stream()
                 .filter(DomainPerson::active)
-                .filter(p -> p.isPresentOn(expense.date()))
                 .filter(this::canParticipateInAllocation)
+                .filter(p -> expense.type() == ExpenseType.GLOBAL || p.isPresentOn(expense.date()))
                 .toList();
 
-        List<DomainPerson> meatParticipants = present.stream()
+        List<DomainPerson> meatParticipants = baseParticipants.stream()
                 .filter(p -> !p.vegetarian())
                 .toList();
 
-        List<DomainPerson> alcoholParticipants = present.stream()
+        List<DomainPerson> alcoholParticipants = baseParticipants.stream()
                 .filter(p -> !p.noAlcohol())
                 .toList();
 
-        addAllocation(shares, general, present);
+        addAllocation(shares, general, baseParticipants);
         addAllocation(shares, meat, meatParticipants);
         addAllocation(shares, alcohol, alcoholParticipants);
         customAmounts.forEach((constraintName, amount) -> {
-            List<DomainPerson> customParticipants = present.stream()
+            List<DomainPerson> customParticipants = baseParticipants.stream()
                     .filter(person -> !person.hasCustomConstraint(constraintName))
                     .toList();
             addAllocation(shares, amount, customParticipants);
@@ -179,13 +170,6 @@ public class BalanceCalculator {
             return;
         }
 
-        if (expense.type() == ExpenseType.GLOBAL) {
-            if (eligibleActivePersons.isEmpty()) {
-                throw new IllegalArgumentException("Dépense globale impossible : aucune personne active avec un RAV positif ou en mode moyenne ne peut participer à la répartition.");
-            }
-            return;
-        }
-
         BigDecimal meat = safe(expense.meatAmount());
         BigDecimal alcohol = safe(expense.alcoholAmount());
         Map<String, BigDecimal> customAmounts = safeCustomAmounts(expense);
@@ -199,15 +183,19 @@ public class BalanceCalculator {
             general = ZERO;
         }
 
-        List<DomainPerson> present = eligibleActivePersons.stream()
-                .filter(p -> p.isPresentOn(expense.date()))
+        List<DomainPerson> baseParticipants = eligibleActivePersons.stream()
+                .filter(p -> expense.type() == ExpenseType.GLOBAL || p.isPresentOn(expense.date()))
                 .toList();
-        List<DomainPerson> meatParticipants = present.stream().filter(p -> !p.vegetarian()).toList();
-        List<DomainPerson> alcoholParticipants = present.stream().filter(p -> !p.noAlcohol()).toList();
+        List<DomainPerson> meatParticipants = baseParticipants.stream().filter(p -> !p.vegetarian()).toList();
+        List<DomainPerson> alcoholParticipants = baseParticipants.stream().filter(p -> !p.noAlcohol()).toList();
 
         List<String> blockingReasons = new ArrayList<>();
-        if (general.signum() > 0 && present.isEmpty()) {
-            blockingReasons.add("la part générale ne concerne personne à la date indiquée");
+        if (general.signum() > 0 && baseParticipants.isEmpty()) {
+            if (expense.type() == ExpenseType.GLOBAL) {
+                blockingReasons.add("la part générale ne concerne aucune personne active avec un RAV positif ou en mode moyenne");
+            } else {
+                blockingReasons.add("la part générale ne concerne personne à la date indiquée");
+            }
         }
         if (meat.signum() > 0 && meatParticipants.isEmpty()) {
             blockingReasons.add("la part viande est positive mais aucune personne concernée ne peut la payer");
@@ -217,7 +205,7 @@ public class BalanceCalculator {
         }
         customAmounts.forEach((constraintName, amount) -> {
             if (amount.signum() > 0) {
-                List<DomainPerson> customParticipants = present.stream()
+                List<DomainPerson> customParticipants = baseParticipants.stream()
                         .filter(person -> !person.hasCustomConstraint(constraintName))
                         .toList();
                 if (customParticipants.isEmpty()) {
@@ -227,7 +215,8 @@ public class BalanceCalculator {
         });
 
         if (!blockingReasons.isEmpty()) {
-            throw new IllegalArgumentException("Dépense impossible : " + String.join(" ; ", blockingReasons) + ".");
+            String prefix = expense.type() == ExpenseType.GLOBAL ? "Dépense globale impossible : " : "Dépense impossible : ";
+            throw new IllegalArgumentException(prefix + String.join(" ; ", blockingReasons) + ".");
         }
     }
 

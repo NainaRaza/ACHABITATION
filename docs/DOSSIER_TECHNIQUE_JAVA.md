@@ -113,7 +113,7 @@ Règles importantes : nom unique par voyage après normalisation, RAV strictemen
 
 Création, modification, liste et suppression des dépenses. Le service valide le payeur, les dates, les montants, les contraintes personnalisées et le fait qu’une dépense concerne au moins une personne.
 
-Une dépense `GLOBAL` ignore les dates de présence dans le calcul. Une dépense avancée utilise `manualParticipantIds`.
+Une dépense `GLOBAL` ignore les dates de présence dans le calcul, mais conserve les blocs viande, alcool et contraintes personnalisées. Une dépense avancée utilise `manualParticipantIds`.
 
 ### `SummaryService`, `ExportService`, `AuditService`
 
@@ -190,7 +190,7 @@ Le client consomme les mêmes DTO que le backend via `AchabitationApi.kt` et `Ap
 - Authentification opaque correcte pour bêta, mais pas encore architecture production complète.
 - Rate limiting mémoire non distribué.
 - Pas de migrations incrémentales au-delà du schéma initial.
-- Pas de CI Android.
+- CI Android présente, validation externe encore à confirmer.
 - Pas de tests E2E navigateur.
 - Pas de client iOS.
 - Exports limités au CSV.

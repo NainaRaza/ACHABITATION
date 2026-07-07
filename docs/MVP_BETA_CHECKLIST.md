@@ -22,13 +22,14 @@ Cette checklist décrit l’état attendu pour considérer le projet utilisable 
 - [x] Guests et liaison à un compte.
 - [x] Création directe du compte courant comme personne du voyage.
 - [x] Contraintes personnalisées déclarées au niveau du voyage.
-- [x] Dépenses normales, globales et avancées.
+- [x] Dépenses datées, mutualisées voyage et avancées.
 - [x] Devise et taux de conversion vers la devise du voyage.
 - [x] Résumé des soldes.
 - [x] Remboursements suggérés.
 - [x] Exports CSV.
 - [x] Audit logs.
 - [x] Tests backend unitaires et intégration.
+- [x] Tests backend explicites sur token expiré, logout et permissions exports/audit/invitations.
 - [x] Smoke tests API.
 
 ## Frontend web
@@ -68,7 +69,9 @@ Cette checklist décrit l’état attendu pour considérer le projet utilisable 
 - [x] Voyages, personnes, dépenses, résumé, invitations, audit.
 - [x] Exports CSV en aperçu copiable.
 - [x] Confirmations sur actions destructrices principales.
-- [x] Tests unitaires Android basiques.
+- [x] Logout Android avec invalidation serveur.
+- [x] Tests unitaires Android basiques, dont client API logout.
+- [x] Job CI Android ajouté.
 
 ## Documentation
 
@@ -80,6 +83,8 @@ Cette checklist décrit l’état attendu pour considérer le projet utilisable 
 - [x] Documentation sécurité bêta.
 - [x] Checklist production séparée.
 - [x] Ancien desktop documenté comme legacy.
+- [x] Procédure minimale de sauvegarde/restauration documentée.
+- [x] Documentation RGPD/RAV ajoutée.
 
 ## Points bloquants avant bêta fermée réelle
 
@@ -87,11 +92,12 @@ Cette checklist décrit l’état attendu pour considérer le projet utilisable 
 - [ ] Lancer manuellement le parcours complet Android sur émulateur.
 - [ ] Vérifier `./mvnw clean test` sur une machine propre.
 - [ ] Vérifier `frontend-web/run-tests.sh` sur une machine propre.
-- [ ] Vérifier `mobile-android/gradlew clean assembleDebug` sur une machine propre.
+- [ ] Vérifier `mobile-android/gradlew testDebugUnitTest assembleDebug` sur une machine propre.
 - [ ] Tester l’invitation avec deux comptes réels.
 - [ ] Tester les droits `READ_ONLY` dans l’interface.
 - [ ] Tester le masquage du RAV privé dans web et Android.
-- [ ] Tester une session expirée ou un token invalidé.
+- [x] Tester automatiquement une session expirée ou un token invalidé côté backend.
+- [ ] Tester manuellement l’écran session expirée web et Android.
 - [ ] Vérifier que les messages d’erreur sont compréhensibles pour un utilisateur non technique.
 
 ## Hors périmètre MVP bêta

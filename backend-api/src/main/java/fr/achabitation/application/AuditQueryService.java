@@ -23,7 +23,7 @@ public class AuditQueryService {
 
     @Transactional(readOnly = true)
     public List<AuditLogResponse> list(UUID tripId, UserEntity actor) {
-        authorizationService.requireReadable(tripId, actor);
+        authorizationService.requireAdmin(tripId, actor);
         return auditLogRepository.findByTripIdOrderByCreatedAtDesc(tripId).stream()
                 .map(mapper::toAuditResponse)
                 .toList();

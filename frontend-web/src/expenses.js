@@ -88,30 +88,19 @@ ctx.renderManualParticipants = function () {
 };
 
 ctx.updateExpenseFieldState = function () {
-    const global = $("expenseType").value === "GLOBAL";
-    $("expenseMeat").disabled = global;
-    $("expenseAlcohol").disabled = global;
-    document.querySelectorAll(".expense-custom-amount").forEach(input => input.disabled = global);
-    $("expenseCustomAmountsBlock").classList.toggle("muted-block", global);
-    if (global) {
-        $("expenseMeat").value = 0;
-        $("expenseAlcohol").value = 0;
-        document.querySelectorAll(".expense-custom-amount").forEach(input => input.value = 0);
-    }
     ctx.renderManualParticipants();
 };
 
 ctx.expensePayload = function () {
     const manualParticipantIds = Array.from(document.querySelectorAll("#manualParticipants input:checked")).map(input => input.value);
-    const global = $("expenseType").value === "GLOBAL";
     return {
         title: $("expenseTitle").value.trim(),
         date: $("expenseDate").value,
         payerPersonId: $("expensePayer").value,
         totalAmount: ctx.asNumber("expenseTotal"),
-        meatAmount: global ? 0 : (ctx.asNumber("expenseMeat") || 0),
-        alcoholAmount: global ? 0 : (ctx.asNumber("expenseAlcohol") || 0),
-        customConstraintAmounts: global ? {} : ctx.collectExpenseCustomAmounts(),
+        meatAmount: ctx.asNumber("expenseMeat") || 0,
+        alcoholAmount: ctx.asNumber("expenseAlcohol") || 0,
+        customConstraintAmounts: ctx.collectExpenseCustomAmounts(),
         type: $("expenseType").value,
         advancedMode: $("expenseAdvancedMode").checked,
         manualParticipantIds,
@@ -221,11 +210,9 @@ ctx.concernedPersonsForExpense = function (expense) {
         return eligible.filter(person => selectedIds.has(person.id));
     }
 
-    if (expense.type === "GLOBAL") {
-        return eligible;
-    }
-
-    const present = eligible.filter(person => ctx.isPersonPresentOn(person, expense.date));
+    const baseParticipants = expense.type === "GLOBAL"
+        ? eligible
+        : eligible.filter(person => ctx.isPersonPresentOn(person, expense.date));
     const meat = Number(expense.meatAmount || 0);
     const alcohol = Number(expense.alcoholAmount || 0);
     const total = Number(expense.totalAmount || 0);
@@ -234,12 +221,12 @@ ctx.concernedPersonsForExpense = function (expense) {
     const general = Math.max(0, total - meat - alcohol - customTotal);
 
     const concerned = [];
-    if (general > 0) concerned.push(...present);
-    if (meat > 0) concerned.push(...present.filter(person => !person.vegetarian));
-    if (alcohol > 0) concerned.push(...present.filter(person => !person.noAlcohol));
+    if (general > 0) concerned.push(...baseParticipants);
+    if (meat > 0) concerned.push(...baseParticipants.filter(person => !person.vegetarian));
+    if (alcohol > 0) concerned.push(...baseParticipants.filter(person => !person.noAlcohol));
     Object.entries(customAmounts).forEach(([constraintName, amount]) => {
         if (Number(amount || 0) > 0) {
-            concerned.push(...present.filter(person => !ctx.personHasCustomConstraint(person, constraintName)));
+            concerned.push(...baseParticipants.filter(person => !ctx.personHasCustomConstraint(person, constraintName)));
         }
     });
 
@@ -255,12 +242,16 @@ ctx.renderConcernedPersons = function (expense) {
     const label = expense.advancedMode
         ? "Mode avancé"
         : expense.type === "GLOBAL"
-            ? "Dépense globale"
-            : "Selon date / végé / alcool / contraintes";
+            ? "Mutualisée voyage · contraintes appliquées"
+            : "Datée · présence / végé / alcool / contraintes";
 
     const names = persons.map(person => person.name).join(", ");
     const chips = persons.map(person => `<span class="person-chip">${ctx.escapeHtml(person.name)}</span>`).join("");
     return `<div class="participant-list" title="${ctx.escapeHtml(names)}">${chips}</div><span class="small">${persons.length} personne${persons.length > 1 ? "s" : ""} · ${label}</span>`;
+};
+
+ctx.expenseTypeLabel = function (type) {
+    return type === "GLOBAL" ? "Mutualisée voyage" : "Datée";
 };
 
 ctx.renderExpenseDetails = function (expense) {
@@ -290,7 +281,7 @@ ctx.renderExpenses = function () {
             <td>${dateFr(expense.date)}</td>
             <td>${ctx.escapeHtml(expense.payerName || "—")}</td>
             <td>${money(expense.totalAmount, expense.currency)}<br><span class="small">Taux ${expense.exchangeRateToTripCurrency || 1}</span></td>
-            <td><span class="badge">${expense.type}</span>${expense.advancedMode ? `<span class="badge">Avancé</span>` : ""}</td>
+            <td><span class="badge">${ctx.expenseTypeLabel(expense.type)}</span>${expense.advancedMode ? `<span class="badge">Avancé</span>` : ""}</td>
             <td>${ctx.renderConcernedPersons(expense)}</td>
             <td><div class="row-actions">
                 <button class="secondary small-button" type="button" data-edit-expense="${expense.id}">Modifier</button>

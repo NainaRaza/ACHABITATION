@@ -65,7 +65,7 @@ gradlew.bat testDebugUnitTest
 ## Fonctionnalités mobiles couvertes
 
 - création de compte ;
-- connexion / déconnexion ;
+- connexion / déconnexion avec invalidation serveur ;
 - session expirée ;
 - modification email + nom de compte ;
 - consultation et modification du profil RAV ;
@@ -80,7 +80,7 @@ gradlew.bat testDebugUnitTest
 - création, modification et désactivation de personnes ;
 - périodes de présence ;
 - ajout, modification et suppression de dépenses ;
-- dépenses normales, globales et avancées ;
+- dépenses datées, mutualisées voyage et avancées ;
 - montants viande, alcool et contraintes personnalisées ;
 - participants manuels ;
 - devise et taux de conversion vers la devise du voyage ;
@@ -118,15 +118,54 @@ La logique métier reste côté backend. L’application Android ne recalcule pa
 - En debug, le HTTP cleartext est autorisé pour le backend local : `10.0.2.2`, `localhost`, `127.0.0.1`.
 - En release, `usesCleartextTraffic=false`.
 - En release, le ViewModel/API refuse les URL `http://`.
+- Le logout appelle `POST /api/v1/auth/logout` avant de nettoyer la session locale.
 - Une réponse HTTP 401 nettoie la session locale et affiche l’écran “Session expirée”.
 - Les actions destructrices principales demandent confirmation : suppression de dépense, désactivation de personne, révocation d’invitation.
 
 ## Limites actuelles
 
-- Pas encore de CI Android dans `.github/workflows/ci.yml`.
-- Pas de tests UI Compose.
+- CI Android ajoutée dans `.github/workflows/ci.yml`; validation à confirmer sur GitHub Actions ou machine disposant des dépendances Gradle.
+- Tests unitaires Android encore limités aux utilitaires et au client API ; pas encore de tests UI Compose.
 - Pas de tests instrumentés.
 - Pas de mode hors-ligne.
 - Pas de sauvegarde native des exports CSV via Storage Access Framework ; les exports sont affichés en texte copiable.
 - URL release encore placeholder : `https://api.achabitation.example/api/v1`.
 - Pas encore de signature release réelle ni de préparation Play Store.
+
+
+## Configuration de l’URL API
+
+L’URL backend par défaut reste `http://10.0.2.2:8080/api/v1` en debug. Elle peut être surchargée au build par propriété Gradle ou variable d’environnement :
+
+```bash
+ACHABITATION_API_BASE_URL=https://api.example.tld/api/v1 ./gradlew assembleRelease
+# ou
+./gradlew assembleRelease -PACHABITATION_API_BASE_URL=https://api.example.tld/api/v1
+```
+
+En release, l’application refuse les URL HTTP au niveau du ViewModel et de la couche API.
+
+## Vérification release production
+
+Avant toute génération Play Store ou AAB public :
+
+```bash
+ACHABITATION_API_BASE_URL=https://api.example.com/api/v1 ./gradlew checkReleaseApiBaseUrl assembleRelease
+```
+
+Le contrôle refuse une URL release non HTTPS ou locale (`localhost`, `10.0.2.2`, `127.0.0.1`). La signature release doit rester hors dépôt.
+
+Les actions compte avancées disponibles côté web sont : changement de mot de passe, export des données et suppression/anonymisation de compte. Si elles ne sont pas implémentées nativement côté Android, l'app doit afficher un lien ou une consigne claire vers le web avant publication publique.
+
+
+## Actions compte web-only en V6
+
+Pour éviter une fausse promesse produit, les actions suivantes sont officiellement considérées web-only tant qu'elles ne sont pas implémentées dans Compose :
+
+- demande et confirmation de reset password ;
+- vérification email par lien ;
+- export RGPD du compte ;
+- suppression/anonymisation du compte ;
+- consultation fine des sessions et révocation d'une session spécifique.
+
+Avant publication Android publique, il faut soit les implémenter nativement, soit afficher dans l'application un lien HTTPS vers l'interface web de gestion du compte.

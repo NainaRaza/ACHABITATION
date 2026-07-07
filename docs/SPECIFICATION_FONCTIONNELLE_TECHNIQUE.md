@@ -36,8 +36,8 @@ Le périmètre actuel couvre :
 - contraintes végétarien et sans alcool ;
 - contraintes personnalisées déclarées au niveau du voyage ;
 - périodes de présence ;
-- dépenses normales ;
-- dépenses globales ;
+- dépenses datées ;
+- dépenses mutualisées voyage ;
 - dépenses avancées avec participant·es manuel·les ;
 - montants spécifiques viande, alcool et contraintes personnalisées ;
 - devise de référence du voyage ;
@@ -160,13 +160,15 @@ La somme viande + alcool + contraintes personnalisées ne peut pas dépasser le 
 
 ## 4. Règles de calcul
 
-### 4.1 Dépense normale
+### 4.1 Dépense datée
 
-Une dépense normale concerne les personnes actives présentes à la date de dépense, sauf si le mode avancé sélectionne explicitement les participant·es.
+Une dépense datée concerne les personnes actives présentes à la date de dépense, sauf si le mode avancé sélectionne explicitement les participant·es.
 
-### 4.2 Dépense globale
+### 4.2 Dépense mutualisée voyage
 
-Une dépense globale ignore les dates de présence. Elle sert aux dépenses décidées collectivement, par exemple essence ou frais communs hors jour précis.
+Une dépense mutualisée voyage correspond au type technique `GLOBAL`. Elle ignore les dates de présence et concerne les personnes actives du voyage. Elle sert aux dépenses décidées collectivement, par exemple essence, logement, courses du premier jour ou frais communs hors jour précis.
+
+Elle n’ignore pas les exclusions : les blocs viande, alcool et contraintes personnalisées restent appliqués. Par exemple, si une dépense mutualisée voyage contient une part alcool, les personnes marquées sans alcool ne paient pas cette part.
 
 ### 4.3 Mode avancé
 
@@ -289,7 +291,7 @@ Avant production publique, il faut traiter au minimum :
 - vérification email ;
 - CORS par environnement ;
 - rate limiting distribué ;
-- CI Android ;
+- CI Android ajoutée, à valider sur runner ou machine propre ;
 - tests E2E web ;
 - monitoring ;
 - logs structurés ;

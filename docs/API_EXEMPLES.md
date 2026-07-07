@@ -260,7 +260,7 @@ curl -i -X DELETE http://localhost:8080/api/v1/trips/$TRIP_ID/persons/$PERSON_ID
 
 ## Dépenses
 
-Créer une dépense normale :
+Créer une dépense datée :
 
 ```bash
 curl -s -X POST http://localhost:8080/api/v1/trips/$TRIP_ID/expenses \
@@ -282,20 +282,20 @@ curl -s -X POST http://localhost:8080/api/v1/trips/$TRIP_ID/expenses \
   }'
 ```
 
-Créer une dépense globale :
+Créer une dépense mutualisée voyage :
 
 ```bash
 curl -s -X POST http://localhost:8080/api/v1/trips/$TRIP_ID/expenses \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
-    "title": "Essence mutualisée",
+    "title": "Courses pour tout le séjour",
     "date": "2026-08-03",
     "payerPersonId": "<person-id-payeur>",
     "totalAmount": 250,
-    "meatAmount": 0,
-    "alcoholAmount": 0,
-    "customConstraintAmounts": {},
+    "meatAmount": 40,
+    "alcoholAmount": 30,
+    "customConstraintAmounts": {"Sans porc": 25},
     "type": "GLOBAL",
     "advancedMode": false,
     "manualParticipantIds": [],
@@ -303,6 +303,8 @@ curl -s -X POST http://localhost:8080/api/v1/trips/$TRIP_ID/expenses \
     "exchangeRateToTripCurrency": 1
   }'
 ```
+
+Le type `GLOBAL` ignore les dates de présence, mais applique toujours les exclusions viande, alcool et contraintes personnalisées.
 
 Créer une dépense avancée avec participant·es manuel·les :
 

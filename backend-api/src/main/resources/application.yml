@@ -24,3 +24,28 @@ server:
 achabitation:
   security:
     mode: opaque-access-token
+  auth:
+    require-email-verification: false
+  app:
+    public-url: http://localhost:3000
+  mail:
+    enabled: false
+    from: no-reply@achabitation.local
+springdoc:
+  api-docs:
+    enabled: true
+  swagger-ui:
+    enabled: true
+    path: /swagger-ui.html
+
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus,metrics
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      show-details: never

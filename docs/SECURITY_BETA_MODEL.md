@@ -20,7 +20,7 @@ Header recommandé :
 Authorization: Bearer <accessToken>
 ```
 
-Le filtre accepte aussi `X-Session-Token`, mais il ne doit pas être privilégié dans les nouveaux clients.
+Le filtre accepte aussi `X-Session-Token`, mais il ne doit pas être privilégié dans les nouveaux clients. Le filtre valide le token puis alimente le `SecurityContext`; les contrôleurs récupèrent ensuite l’utilisateur courant depuis ce contexte.
 
 ## Stockage du token
 
@@ -58,7 +58,7 @@ Toutes les autres routes `/api/v1/**` exigent une authentification.
 POST /api/v1/auth/logout
 ```
 
-Le logout supprime le hash de session côté serveur. Le client doit aussi nettoyer son stockage local.
+Le logout supprime le hash de session côté serveur. Le web et Android doivent appeler cet endpoint avant de nettoyer leur stockage local. Android conserve la session locale si l’appel serveur échoue pour une raison réseau, afin d’éviter une fausse déconnexion côté client alors que le token reste valide côté serveur.
 
 ## Rate limiting
 
@@ -106,7 +106,7 @@ Le header `Content-Disposition` est exposé pour permettre le téléchargement d
 
 La variante debug autorise le HTTP local pour `10.0.2.2`, `localhost` et `127.0.0.1`.
 
-La variante release définit `usesCleartextTraffic=false` et le ViewModel/API refuse les URL `http://` en release.
+La variante release définit `usesCleartextTraffic=false` et le ViewModel/API refuse les URL `http://` en release. Le logout Android appelle `POST /api/v1/auth/logout`; une réponse 401 nettoie la session locale et ramène vers la connexion.
 
 ## Limites avant production
 

@@ -236,3 +236,37 @@ tr:last-child td { border-bottom: 0; }
 .account-actions { margin-top: 12px; }
 .compact-details { margin: 10px 0 0; }
 .compact-details div { grid-template-columns: 120px minmax(0, 1fr); }
+
+.skip-link {
+    position: absolute;
+    left: 16px;
+    top: -48px;
+    z-index: 20;
+    background: white;
+    color: var(--primary);
+    border: 2px solid var(--primary);
+    border-radius: 10px;
+    padding: 10px 12px;
+    font-weight: 750;
+}
+.skip-link:focus { top: 12px; }
+button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible, a:focus-visible {
+    outline: 3px solid #7aa7ff;
+    outline-offset: 2px;
+}
+@media (max-width: 720px) {
+    .topbar { padding: 16px; align-items: stretch; }
+    .brand-block { min-width: 0; }
+    .topbar, .hero, .card-title-row { flex-direction: column; }
+    .app-shell { width: min(100% - 20px, 1480px); margin-top: 12px; }
+    .grid.two, .grid.three, .grid.four, .metric-grid, .checkbox-list { grid-template-columns: 1fr; }
+    .tabs { overflow-x: auto; flex-wrap: nowrap; }
+    .tab { white-space: nowrap; }
+    .actions, .quick-panel { align-items: stretch; }
+    .actions > button, .quick-panel > button { width: 100%; }
+    table { font-size: 12px; }
+}
+.warning-text {
+    border-left: 3px solid currentColor;
+    padding-left: .75rem;
+}

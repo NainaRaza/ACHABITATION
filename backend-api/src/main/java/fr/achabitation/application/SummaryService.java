@@ -12,6 +12,7 @@ import fr.achabitation.infrastructure.entity.TripEntity;
 import fr.achabitation.infrastructure.entity.UserEntity;
 import fr.achabitation.infrastructure.repository.ExpenseRepository;
 import fr.achabitation.infrastructure.repository.PersonRepository;
+import java.util.Set;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -48,6 +49,18 @@ public class SummaryService {
 
         List<Balance> balances = balanceCalculator.calculateBalances(expenses, persons);
         List<Settlement> settlements = balanceCalculator.calculateSettlements(balances);
+
+        if (!authorizationService.isAdmin(tripId, actor)) {
+            Set<UUID> visiblePersonIds = personRepository.findByTripIdAndLinkedUserId(tripId, actor.getId())
+                    .map(person -> Set.of(person.getId()))
+                    .orElse(Set.of());
+            balances = balances.stream()
+                    .filter(balance -> visiblePersonIds.contains(balance.person().id()))
+                    .toList();
+            settlements = settlements.stream()
+                    .filter(settlement -> visiblePersonIds.contains(settlement.from().id()) || visiblePersonIds.contains(settlement.to().id()))
+                    .toList();
+        }
 
         return new SummaryResponse(
                 trip.getReferenceCurrency(),

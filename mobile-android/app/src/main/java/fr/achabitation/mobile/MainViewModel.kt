@@ -42,25 +42,37 @@ enum class TripTab(val label: String) {
     Audit("Audit")
 }
 
-class MainViewModel(application: Application) : AndroidViewModel(application) {
-    private val prefs = SecurePreferences.open(application)
+class MainViewModel : AndroidViewModel {
+    private val storage: SessionStorage
+    private val api: AchabitationClient
 
-    var state by mutableStateOf(
-        AppUiState(
-            baseUrl = prefs.getString("baseUrl", BuildConfig.DEFAULT_API_BASE_URL) ?: BuildConfig.DEFAULT_API_BASE_URL,
+    constructor(application: Application) : this(
+        application = application,
+        storage = SharedPreferencesSessionStorage(SecurePreferences.open(application)),
+        apiClient = null,
+        autoRefresh = true
+    )
+
+    internal constructor(
+        application: Application,
+        storage: SessionStorage,
+        apiClient: AchabitationClient?,
+        autoRefresh: Boolean = true
+    ) : super(application) {
+        this.storage = storage
+        state = AppUiState(
+            baseUrl = storage.getString("baseUrl", BuildConfig.DEFAULT_API_BASE_URL) ?: BuildConfig.DEFAULT_API_BASE_URL,
             auth = readAuth()
         )
-    )
-        private set
-
-    private val api = AchabitationApi(
-        baseUrlProvider = { state.baseUrl },
-        tokenProvider = { state.auth?.accessToken }
-    )
-
-    init {
-        if (state.auth != null) refreshDashboard(silent = true)
+        this.api = apiClient ?: AchabitationApi(
+            baseUrlProvider = { state.baseUrl },
+            tokenProvider = { state.auth?.accessToken }
+        )
+        if (autoRefresh && state.auth != null) refreshDashboard(silent = true)
     }
+
+    var state by mutableStateOf(AppUiState())
+        private set
 
     fun updateBaseUrl(value: String) {
         val sanitized = value.trim()
@@ -69,7 +81,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             return
         }
         state = state.copy(baseUrl = sanitized)
-        prefs.edit().putString("baseUrl", sanitized).apply()
+        storage.putString("baseUrl", sanitized)
     }
 
     fun clearMessage() {
@@ -85,14 +97,14 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         state = state.copy(exportPreview = null)
     }
 
-    fun login(email: String, password: String) = runTask("Connexion réussie.") {
+    fun login(email: String, password: String) = runTask("Connexion réussie.", treatUnauthorizedAsSessionExpired = false) {
         val auth = api.login(LoginRequest(email.trim(), password))
         saveAuth(auth)
         state = state.copy(auth = auth, selectedTrip = null)
         loadDashboardData()
     }
 
-    fun register(email: String, displayName: String, password: String) = runTask("Compte créé.") {
+    fun register(email: String, displayName: String, password: String) = runTask("Compte créé.", treatUnauthorizedAsSessionExpired = false) {
         val auth = api.register(RegisterRequest(email.trim(), displayName.trim(), password))
         saveAuth(auth)
         state = state.copy(auth = auth, selectedTrip = null)
@@ -120,8 +132,31 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun logout() {
-        clearAuthLocal()
-        state = AppUiState(baseUrl = state.baseUrl, message = "Déconnexion effectuée.")
+        val currentBaseUrl = state.baseUrl
+        if (state.auth == null) {
+            clearAuthLocal()
+            state = AppUiState(baseUrl = currentBaseUrl, message = "Déconnexion locale effectuée.")
+            return
+        }
+        viewModelScope.launch {
+            state = state.copy(loading = true, message = null, error = null)
+            try {
+                api.logout()
+                clearAuthLocal()
+                state = AppUiState(baseUrl = currentBaseUrl, message = "Déconnexion effectuée.")
+            } catch (ex: Exception) {
+                if (ex is ApiException && ex.status == 401) {
+                    clearAuthLocal()
+                    state = AppUiState(baseUrl = currentBaseUrl, message = "Session déjà expirée. Déconnexion locale effectuée.")
+                } else {
+                    state = state.copy(
+                        loading = false,
+                        error = "Déconnexion serveur impossible. Vérifie la connexion puis réessaie. La session locale est conservée.",
+                        message = null
+                    )
+                }
+            }
+        }
     }
 
     fun refreshDashboard(silent: Boolean = false) = runTask(if (silent) null else "Données synchronisées.") {
@@ -161,7 +196,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun backToTrips() {
-        prefs.edit().remove("selectedTripId").apply()
+        storage.remove("selectedTripId")
         state = state.copy(
             selectedTrip = null,
             persons = emptyList(),
@@ -281,13 +316,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         val profile = api.profile()
         val trips = api.trips()
         state = state.copy(profile = profile, trips = trips)
-        val selectedId = prefs.getString("selectedTripId", null)
+        val selectedId = storage.getString("selectedTripId", null)
         val selected = trips.firstOrNull { it.id == selectedId }
         if (selected != null) selectTripInternal(selected, state.selectedTab)
     }
 
     private suspend fun selectTripInternal(trip: TripResponse, tab: TripTab) {
-        prefs.edit().putString("selectedTripId", trip.id).apply()
+        storage.putString("selectedTripId", trip.id)
         state = state.copy(selectedTrip = trip, selectedTab = tab, summary = null, invitations = emptyList(), auditLogs = emptyList(), exportPreview = null)
         loadTripData(trip.id)
     }
@@ -310,14 +345,14 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         loadTripData(trip.id)
     }
 
-    private fun runTask(successMessage: String?, block: suspend () -> Unit) {
+    private fun runTask(successMessage: String?, treatUnauthorizedAsSessionExpired: Boolean = true, block: suspend () -> Unit) {
         viewModelScope.launch {
             state = state.copy(loading = true, message = null, error = null)
             try {
                 block()
                 state = state.copy(loading = false, message = successMessage, error = null)
             } catch (ex: Exception) {
-                if (ex is ApiException && ex.status == 401) {
+                if (treatUnauthorizedAsSessionExpired && ex is ApiException && ex.status == 401) {
                     clearAuthLocal()
                     state = AppUiState(
                         baseUrl = state.baseUrl,
@@ -365,22 +400,14 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         runCatching { LocalDate.parse(value.trim()) }.getOrElse { throw IllegalArgumentException("$message. Format attendu : AAAA-MM-JJ.") }
 
     private fun saveAuth(auth: AuthResponse) {
-        prefs.edit()
-            .putString("userId", auth.userId)
-            .putString("email", auth.email)
-            .putString("displayName", auth.displayName)
-            .putString("accessToken", auth.accessToken)
-            .apply()
+        storage.putString("userId", auth.userId)
+        storage.putString("email", auth.email)
+        storage.putString("displayName", auth.displayName)
+        storage.putString("accessToken", auth.accessToken)
     }
 
     private fun clearAuthLocal() {
-        prefs.edit()
-            .remove("userId")
-            .remove("email")
-            .remove("displayName")
-            .remove("accessToken")
-            .remove("selectedTripId")
-            .apply()
+        storage.remove("userId", "email", "displayName", "accessToken", "selectedTripId")
     }
 
     private fun userFacingError(ex: Exception): String = when (ex) {
@@ -391,10 +418,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     private fun readAuth(): AuthResponse? {
-        val userId = prefs.getString("userId", null) ?: return null
-        val email = prefs.getString("email", null) ?: return null
-        val displayName = prefs.getString("displayName", null) ?: return null
-        val token = prefs.getString("accessToken", null) ?: return null
+        val userId = storage.getString("userId", null) ?: return null
+        val email = storage.getString("email", null) ?: return null
+        val displayName = storage.getString("displayName", null) ?: return null
+        val token = storage.getString("accessToken", null) ?: return null
         return AuthResponse(userId = userId, email = email, displayName = displayName, accessToken = token)
     }
 }

@@ -11,48 +11,80 @@ import java.net.URL
 
 class ApiException(message: String, val status: Int? = null) : Exception(message)
 
+interface AchabitationClient {
+    suspend fun register(request: RegisterRequest): AuthResponse
+    suspend fun login(request: LoginRequest): AuthResponse
+    suspend fun logout()
+    suspend fun profile(): UserProfileResponse
+    suspend fun updateAccount(request: AccountUpdateRequest): AuthResponse
+    suspend fun updateProfile(request: UserProfileRequest): UserProfileResponse
+    suspend fun applyProfileToLinkedPersons(request: ApplyProfileToLinkedPersonsRequest): UserProfileResponse
+    suspend fun trips(): List<TripResponse>
+    suspend fun createTrip(request: TripCreateRequest): TripResponse
+    suspend fun updateTripConstraints(tripId: String, request: TripConstraintUpdateRequest): TripResponse
+    suspend fun joinTripByCode(request: JoinTripByCodeRequest): TripResponse
+    suspend fun invitations(tripId: String): List<TripInvitationResponse>
+    suspend fun createInvitation(tripId: String, request: TripInvitationCreateRequest): TripInvitationResponse
+    suspend fun revokeInvitation(tripId: String, invitationId: String)
+    suspend fun persons(tripId: String): List<PersonResponse>
+    suspend fun createPerson(tripId: String, request: PersonCreateRequest): PersonResponse
+    suspend fun updatePerson(tripId: String, personId: String, request: PersonUpdateRequest): PersonResponse
+    suspend fun createCurrentUserPerson(tripId: String, request: CurrentUserPersonCreateRequest): PersonResponse
+    suspend fun linkCurrentUser(tripId: String, personId: String, request: LinkGuestRequest): PersonResponse
+    suspend fun disablePerson(tripId: String, personId: String)
+    suspend fun expenses(tripId: String): List<ExpenseResponse>
+    suspend fun createExpense(tripId: String, request: ExpenseCreateRequest): ExpenseResponse
+    suspend fun updateExpense(tripId: String, expenseId: String, request: ExpenseCreateRequest): ExpenseResponse
+    suspend fun deleteExpense(tripId: String, expenseId: String)
+    suspend fun summary(tripId: String): SummaryResponse
+    suspend fun auditLogs(tripId: String): List<AuditLogResponse>
+    suspend fun exportExpensesCsv(tripId: String): String
+    suspend fun exportSummaryCsv(tripId: String): String
+}
+
 class AchabitationApi(
     private val baseUrlProvider: () -> String,
     private val tokenProvider: () -> String?
-) {
+) : AchabitationClient {
     private val json = Json {
         ignoreUnknownKeys = true
         encodeDefaults = true
         coerceInputValues = true
     }
 
-    suspend fun register(request: RegisterRequest): AuthResponse = post("/auth/register", request, AuthResponse.serializer(), authRequired = false)
-    suspend fun login(request: LoginRequest): AuthResponse = post("/auth/login", request, AuthResponse.serializer(), authRequired = false)
-    suspend fun profile(): UserProfileResponse = get("/auth/profile", UserProfileResponse.serializer())
-    suspend fun updateAccount(request: AccountUpdateRequest): AuthResponse = put("/auth/account", request, AuthResponse.serializer())
-    suspend fun updateProfile(request: UserProfileRequest): UserProfileResponse = put("/auth/profile", request, UserProfileResponse.serializer())
-    suspend fun applyProfileToLinkedPersons(request: ApplyProfileToLinkedPersonsRequest): UserProfileResponse = post("/auth/profile/apply-to-linked-persons", request, UserProfileResponse.serializer())
+    override suspend fun register(request: RegisterRequest): AuthResponse = post("/auth/register", request, AuthResponse.serializer(), authRequired = false)
+    override suspend fun login(request: LoginRequest): AuthResponse = post("/auth/login", request, AuthResponse.serializer(), authRequired = false)
+    override suspend fun profile(): UserProfileResponse = get("/auth/profile", UserProfileResponse.serializer())
+    override suspend fun updateAccount(request: AccountUpdateRequest): AuthResponse = put("/auth/account", request, AuthResponse.serializer())
+    override suspend fun updateProfile(request: UserProfileRequest): UserProfileResponse = put("/auth/profile", request, UserProfileResponse.serializer())
+    override suspend fun applyProfileToLinkedPersons(request: ApplyProfileToLinkedPersonsRequest): UserProfileResponse = post("/auth/profile/apply-to-linked-persons", request, UserProfileResponse.serializer())
+    override suspend fun logout() = requestUnit("/auth/logout", "POST", null, authRequired = true)
 
-    suspend fun trips(): List<TripResponse> = getList("/trips", TripResponse.serializer())
-    suspend fun createTrip(request: TripCreateRequest): TripResponse = post("/trips", request, TripResponse.serializer())
-    suspend fun updateTripConstraints(tripId: String, request: TripConstraintUpdateRequest): TripResponse = put("/trips/$tripId/constraints", request, TripResponse.serializer())
+    override suspend fun trips(): List<TripResponse> = getList("/trips", TripResponse.serializer())
+    override suspend fun createTrip(request: TripCreateRequest): TripResponse = post("/trips", request, TripResponse.serializer())
+    override suspend fun updateTripConstraints(tripId: String, request: TripConstraintUpdateRequest): TripResponse = put("/trips/$tripId/constraints", request, TripResponse.serializer())
     suspend fun joinTrip(tripId: String, request: JoinTripRequest): TripResponse = post("/trips/$tripId/join", request, TripResponse.serializer())
-    suspend fun joinTripByCode(request: JoinTripByCodeRequest): TripResponse = post("/trips/join-by-code", request, TripResponse.serializer())
-    suspend fun invitations(tripId: String): List<TripInvitationResponse> = getList("/trips/$tripId/invitations", TripInvitationResponse.serializer())
-    suspend fun createInvitation(tripId: String, request: TripInvitationCreateRequest): TripInvitationResponse = post("/trips/$tripId/invitations", request, TripInvitationResponse.serializer())
-    suspend fun revokeInvitation(tripId: String, invitationId: String) = delete("/trips/$tripId/invitations/$invitationId")
+    override suspend fun joinTripByCode(request: JoinTripByCodeRequest): TripResponse = post("/trips/join-by-code", request, TripResponse.serializer())
+    override suspend fun invitations(tripId: String): List<TripInvitationResponse> = getList("/trips/$tripId/invitations", TripInvitationResponse.serializer())
+    override suspend fun createInvitation(tripId: String, request: TripInvitationCreateRequest): TripInvitationResponse = post("/trips/$tripId/invitations", request, TripInvitationResponse.serializer())
+    override suspend fun revokeInvitation(tripId: String, invitationId: String) = delete("/trips/$tripId/invitations/$invitationId")
 
-    suspend fun persons(tripId: String): List<PersonResponse> = getList("/trips/$tripId/persons", PersonResponse.serializer())
-    suspend fun createPerson(tripId: String, request: PersonCreateRequest): PersonResponse = post("/trips/$tripId/persons", request, PersonResponse.serializer())
-    suspend fun updatePerson(tripId: String, personId: String, request: PersonUpdateRequest): PersonResponse = put("/trips/$tripId/persons/$personId", request, PersonResponse.serializer())
-    suspend fun createCurrentUserPerson(tripId: String, request: CurrentUserPersonCreateRequest): PersonResponse = post("/trips/$tripId/persons/current-user", request, PersonResponse.serializer())
-    suspend fun linkCurrentUser(tripId: String, personId: String, request: LinkGuestRequest): PersonResponse = post("/trips/$tripId/persons/$personId/link-current-user", request, PersonResponse.serializer())
-    suspend fun disablePerson(tripId: String, personId: String) = delete("/trips/$tripId/persons/$personId")
+    override suspend fun persons(tripId: String): List<PersonResponse> = getList("/trips/$tripId/persons", PersonResponse.serializer())
+    override suspend fun createPerson(tripId: String, request: PersonCreateRequest): PersonResponse = post("/trips/$tripId/persons", request, PersonResponse.serializer())
+    override suspend fun updatePerson(tripId: String, personId: String, request: PersonUpdateRequest): PersonResponse = put("/trips/$tripId/persons/$personId", request, PersonResponse.serializer())
+    override suspend fun createCurrentUserPerson(tripId: String, request: CurrentUserPersonCreateRequest): PersonResponse = post("/trips/$tripId/persons/current-user", request, PersonResponse.serializer())
+    override suspend fun linkCurrentUser(tripId: String, personId: String, request: LinkGuestRequest): PersonResponse = post("/trips/$tripId/persons/$personId/link-current-user", request, PersonResponse.serializer())
+    override suspend fun disablePerson(tripId: String, personId: String) = delete("/trips/$tripId/persons/$personId")
 
-    suspend fun expenses(tripId: String): List<ExpenseResponse> = getList("/trips/$tripId/expenses", ExpenseResponse.serializer())
-    suspend fun createExpense(tripId: String, request: ExpenseCreateRequest): ExpenseResponse = post("/trips/$tripId/expenses", request, ExpenseResponse.serializer())
-    suspend fun updateExpense(tripId: String, expenseId: String, request: ExpenseCreateRequest): ExpenseResponse = put("/trips/$tripId/expenses/$expenseId", request, ExpenseResponse.serializer())
-    suspend fun deleteExpense(tripId: String, expenseId: String) = delete("/trips/$tripId/expenses/$expenseId")
+    override suspend fun expenses(tripId: String): List<ExpenseResponse> = getList("/trips/$tripId/expenses", ExpenseResponse.serializer())
+    override suspend fun createExpense(tripId: String, request: ExpenseCreateRequest): ExpenseResponse = post("/trips/$tripId/expenses", request, ExpenseResponse.serializer())
+    override suspend fun updateExpense(tripId: String, expenseId: String, request: ExpenseCreateRequest): ExpenseResponse = put("/trips/$tripId/expenses/$expenseId", request, ExpenseResponse.serializer())
+    override suspend fun deleteExpense(tripId: String, expenseId: String) = delete("/trips/$tripId/expenses/$expenseId")
 
-    suspend fun summary(tripId: String): SummaryResponse = get("/trips/$tripId/summary", SummaryResponse.serializer())
-    suspend fun auditLogs(tripId: String): List<AuditLogResponse> = getList("/trips/$tripId/audit-logs", AuditLogResponse.serializer())
-    suspend fun exportExpensesCsv(tripId: String): String = getText("/trips/$tripId/exports/expenses.csv")
-    suspend fun exportSummaryCsv(tripId: String): String = getText("/trips/$tripId/exports/summary.csv")
+    override suspend fun summary(tripId: String): SummaryResponse = get("/trips/$tripId/summary", SummaryResponse.serializer())
+    override suspend fun auditLogs(tripId: String): List<AuditLogResponse> = getList("/trips/$tripId/audit-logs", AuditLogResponse.serializer())
+    override suspend fun exportExpensesCsv(tripId: String): String = getText("/trips/$tripId/exports/expenses.csv")
+    override suspend fun exportSummaryCsv(tripId: String): String = getText("/trips/$tripId/exports/summary.csv")
 
     private suspend fun <T> getList(path: String, itemSerializer: KSerializer<T>): List<T> =
         request(path, "GET", null, ListSerializer(itemSerializer), authRequired = true)

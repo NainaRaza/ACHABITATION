@@ -93,7 +93,7 @@ public class EntityMapper {
                 person.getId(),
                 person.getName(),
                 linkedUserId,
-                guest ? null : person.getLinkedUser().getEmail(),
+                ownProfile ? person.getLinkedUser().getEmail() : null,
                 guest,
                 visibleLivingRest,
                 hidden,

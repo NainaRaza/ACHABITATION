@@ -149,3 +149,16 @@ Le backend refuse toute personne non liée au compte authentifié.
 - La durée de session doit devenir configurable.
 - La matrice de droits doit continuer à être testée à chaque nouvelle route.
 - La normalisation des contraintes reste volontairement neutre : espaces, casse et accents, sans synonymes métier imposés.
+
+## Clarification UI — contraintes de voyage
+
+Depuis la correction V6.3, l'ajout d'une contrainte personnalisée ne doit plus être découvert uniquement depuis le formulaire personne.
+
+Comportement attendu :
+
+- Web : les contraintes peuvent être saisies dès la création du voyage, puis administrées dans `Paramètres du voyage > Contraintes du voyage`.
+- Android : les contraintes sont administrées dans l'écran `Vue` du voyage, carte `Contraintes du voyage`, avec ajout unitaire et édition de la liste complète.
+- Personnes : les contraintes déclarées sur le voyage sont affichées comme cases à cocher. Un utilisateur ne saisit plus librement `Vegan, PMR` dans le formulaire personne mobile.
+- Dépenses : les options RAV affichent un champ montant par contrainte déclarée sur le voyage. Le libellé de type `Contraintes : Vegan=12, PMR=5` était uniquement un exemple de saisie technique et a été retiré de l'interface mobile.
+
+Rappel métier : lorsqu'une dépense contient une part positive pour une contrainte, cette part est répartie entre les personnes actives qui ne portent pas cette contrainte.

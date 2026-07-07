@@ -57,6 +57,8 @@ URLs locales :
 API        : http://localhost:8080/api/v1
 Health     : http://localhost:8080/api/v1/health
 Readiness  : http://localhost:8080/api/v1/health/readiness
+OpenAPI    : http://localhost:8080/v3/api-docs
+Swagger UI : http://localhost:8080/swagger-ui.html
 H2 console : http://localhost:8080/h2-console
 ```
 
@@ -134,6 +136,22 @@ cd mobile-android
 gradlew.bat clean assembleDebug
 ```
 
+## Validation globale
+
+Depuis la racine du dépôt :
+
+```bash
+./scripts/validate-all.sh
+```
+
+Sous PowerShell :
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\validate-all.ps1
+```
+
+Cette commande exécute les tests backend, les tests frontend, les tests unitaires Android et le build `assembleDebug`.
+
 ## Docker / PostgreSQL
 
 Depuis la racine du dépôt :
@@ -142,7 +160,7 @@ Depuis la racine du dépôt :
 docker compose -f infra/docker-compose.yml up --build
 ```
 
-Ce mode lance PostgreSQL 16 et `backend-api` avec le profil Spring `prod`.
+Ce mode lance PostgreSQL 16 et `backend-api` avec le profil Spring `prod`. Il nécessite un fichier `.env` local basé sur `.env.example`; les secrets de production ne doivent pas être codés dans le dépôt.
 
 ## Tests
 
@@ -160,11 +178,20 @@ cd frontend-web
 ./run-tests.sh
 ```
 
+Tests navigateur Playwright, après installation npm et navigateurs :
+
+```bash
+cd frontend-web
+npm install
+npx playwright install chromium
+npm run test:e2e
+```
+
 Android :
 
 ```bash
 cd mobile-android
-./gradlew testDebugUnitTest
+./gradlew testDebugUnitTest assembleDebug
 ```
 
 Smoke test API, backend déjà lancé :
@@ -186,6 +213,7 @@ docs/ARCHITECTURE_REFONTE.md
 docs/SPECIFICATION_FONCTIONNELLE_TECHNIQUE.md
 docs/DOSSIER_TECHNIQUE_JAVA.md
 docs/API_EXEMPLES.md
+docs/API_OPENAPI.md
 docs/SECURITY_BETA_MODEL.md
 docs/MVP_BETA_CHECKLIST.md
 docs/PROD_READY_CHECKLIST.md
@@ -193,8 +221,12 @@ docs/FRONT_WEB_REFACTOR.md
 docs/INTERFACE_WEB_LOCALE.md
 docs/V1_AUTH_PROFIL_CONTRAINTES.md
 docs/EXPORTS_CSV.md
+docs/BACKUP_RESTORE.md
+docs/RGPD_DONNEES_SENSIBLES.md
+docs/OBSERVABILITE.md
+docs/RESTE_A_FAIRE_ET_EVOLUTIONS.md
 ```
 
 ## Intégration continue
 
-Le workflow GitHub Actions situé dans `.github/workflows/ci.yml` lance les tests backend avec Java 21 et les tests frontend avec Node.js 22. Le client Android n’est pas encore intégré au workflow CI actuel.
+Le workflow GitHub Actions situé dans `.github/workflows/ci.yml` lance désormais les tests backend avec Java 21, les tests frontend Node.js avec Node.js 22, les tests navigateur Playwright, puis les tests unitaires Android et `assembleDebug` avec Gradle.

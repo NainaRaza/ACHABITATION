@@ -1,113 +1,54 @@
-# Checklist production
+# Checklist production publique — Achabitation
 
-Cette checklist liste les actions nécessaires avant exposition publique. Le projet actuel est un MVP bêta local avancé, pas une application production-ready.
+État après le lot **V6.5 retour production**. Cette checklist distingue les corrections intégrées dans le dépôt de ce qui reste nécessairement à prouver sur une infrastructure réelle.
 
-## Sécurité applicative
+## P0 lancement public ouvert
 
-- [x] Routes applicatives protégées par authentification.
-- [x] Token brut non stocké en base.
-- [x] Logout serveur.
-- [x] Rôles de voyage.
-- [x] Contrôle du RAV privé côté backend.
-- [ ] Remplacer ou compléter le token opaque par une stratégie de session production : refresh token, rotation, révocation multi-session ou session serveur robuste.
-- [ ] Ajouter expiration configurable par environnement.
-- [ ] Ajouter changement et reset de mot de passe.
-- [ ] Ajouter vérification email.
-- [ ] Ajouter politique de mot de passe documentée.
-- [ ] Ajouter protection brute-force distribuée.
-- [ ] Ajouter journaux de sécurité exploitables.
-- [ ] Ajouter durcissement des headers HTTP derrière reverse proxy.
-- [ ] Ajouter configuration CORS par environnement.
-- [ ] Supprimer l’accès H2 console hors dev.
+| Sujet | Statut V6.5 | Commentaire |
+|---|---|---|
+| Dépense mutualisée voyage + contraintes personnalisées | Fait | La persistance backend de `customConstraintAmounts` n'est plus limitée aux dépenses datées. Test API ajouté pour dépense `GLOBAL` + contrainte personnalisée + résumé. |
+| Fuite d'email dans les audits | Fait | `TripService.linkGuestToUser` ne stocke plus l'email brut dans la description d'audit. Les audit logs voyage sont maintenant réservés owner/admin. Test de non-régression ajouté. |
+| Erreurs techniques exposées au client | Fait | `ApiExceptionHandler` renvoie des messages génériques pour contraintes DB et erreurs 500, avec `requestId`. Les détails techniques restent dans les logs serveur. |
+| Vérification email | Fait applicatif | Endpoints de demande/confirmation, token hashé, expiration 24h, exigence activée en profil `prod`. SMTP réel à configurer et tester. |
+| Email SMTP réel | Fait côté application, non faisable ici | `spring-boot-starter-mail`, `SMTP_*`, `MAIL_FROM`, fail-fast prod. Envoi réel à tester avec le fournisseur cible. |
+| Rate limiting distribué réel | Exemple edge fourni, non faisable ici | Exemple Nginx `limit_req`. Redis/gateway reste nécessaire si plusieurs reverse proxies ou plusieurs edges. |
+| Politique confidentialité / CGU finalisées | Non faisable ici | Les documents restent des drafts techniques. Validation juridique nécessaire. |
+| Backup restauré réellement | Non faisable ici | Scripts disponibles, mais restauration à prouver sur une base PostgreSQL réelle. |
+| Monitoring/alerting branché | Fait applicatif minimal, non faisable ici | Actuator + Prometheus exposés. Alerting externe à brancher. |
+| CI complète sur machine propre | À valider | Workflow GitHub Actions présent. Le job front E2E utilise maintenant `npm ci` et `package-lock.json`. Succès réel à fournir. |
 
-## Données et base
+## P0 seulement si Android public
 
-- [x] H2 local.
-- [x] PostgreSQL en profil `prod`.
-- [x] Migration initiale Flyway.
-- [ ] Supprimer `ddl-auto=update` de tout environnement partagé.
-- [ ] Ajouter migrations incrémentales versionnées.
-- [ ] Ajouter stratégie de sauvegarde PostgreSQL et restauration testée.
-- [ ] Ajouter index complémentaires après mesure.
-- [ ] Ajouter contraintes de suppression/archivage cohérentes.
-- [ ] Ajouter politique de conservation des audit logs.
-- [ ] Ajouter export/suppression des données utilisateur selon obligations applicables.
+| Sujet | Statut V6.5 | Commentaire |
+|---|---|---|
+| Signature release | Non faisable ici | Clé release à générer et stocker hors dépôt. |
+| AAB release testé | Non faisable ici | Dépend du build Gradle réel. |
+| URL API production définitive | Fait partiel | Contrôle `checkReleaseApiBaseUrl`. Domaine final à renseigner. |
+| Politique confidentialité Play Store | Non faisable ici | Dépend du texte final validé juridiquement. |
+| Tests APK/AAB installé | Non faisable ici | À faire sur émulateur/appareil réel. |
 
-## Backend
+## P1 production sérieuse
 
-- [x] Tests unitaires domaine.
-- [x] Tests d’intégration API.
-- [x] Smoke tests.
-- [ ] Ajouter tests de charge simples.
-- [ ] Ajouter tests d’autorisation exhaustifs par route.
-- [ ] Ajouter pagination si les listes deviennent volumineuses.
-- [ ] Ajouter limites de taille strictes sur payloads.
-- [ ] Ajouter logs structurés, métriques et request-id.
-- [ ] Ajouter documentation OpenAPI générée.
+| Sujet | Statut V6.5 | Commentaire |
+|---|---|---|
+| Validations serveur financières | Fait partiel renforcé | Ajout d'annotations Bean Validation sur dépenses, personnes, profil et devise. Ajout d'une migration SQL de contraintes `CHECK` PostgreSQL. |
+| Tests backend contre PostgreSQL | Fait optionnel | Ajout d'un test Testcontainers Postgres désactivé par défaut. À exécuter avec `ACHABITATION_POSTGRES_IT=true ./mvnw test`. |
+| Matrice de permissions métier | Fait partiel | Matrice documentée. Audit logs désormais owner/admin uniquement. Des tests supplémentaires restent utiles pour toutes les combinaisons owner/admin/participant/viewer. |
+| Stockage token web | Reste à faire | Le web reste en `localStorage`. Pour production publique, arbitrer cookie `HttpOnly Secure SameSite` ou CSP très stricte + tokens courts. |
+| Réduction des gros services backend | Fait partiel | `AccountSessionService`, `AccountEmailService`, `SecurityEventService` existent. `AuthService` garde encore profil/RGPD/reset et doit être réduit ensuite. |
+| Scan dépendances/images | Reste à faire | Maven/npm/Gradle/Docker audit à brancher en CI avant ouverture publique. |
+| Monitoring et alerting réels | Reste à faire infra | Les métriques existent ; alertes et dashboards restent à brancher. |
+| Audit accessibilité web | Reste à faire | Audit clavier/contrastes/labels/responsive réel non exécuté ici. |
+| Politique conservation logs | Documenté | Voir `docs/LOG_RETENTION_POLICY.md`. À valider juridiquement. |
 
-## Frontend web
+## Commandes de preuve à exécuter hors environnement ChatGPT
 
-- [x] Séparation frontend/backend.
-- [x] Modules JS séparés.
-- [x] Tests Node de syntaxe et parcours mocké.
-- [ ] Ajouter tests E2E navigateur.
-- [ ] Ajouter tests d’accessibilité.
-- [ ] Ajouter build/bundling production ou choisir explicitement de rester sans bundler.
-- [ ] Ajouter CSP adaptée.
-- [ ] Vérifier l’ergonomie mobile web.
-- [ ] Ajouter design system minimal.
-- [ ] Ajouter messages d’erreur homogènes.
+```bash
+cd backend-api && ./mvnw clean test
+ACHABITATION_POSTGRES_IT=true ./mvnw test -Dtest=PostgresIntegrationSmokeTest
+cd frontend-web && npm ci && ./run-tests.sh && npx playwright test
+cd mobile-android && ./gradlew testDebugUnitTest assembleDebug checkReleaseApiBaseUrl
+./scripts/validate-all.sh
+```
 
-## Android
-
-- [x] Client Kotlin / Compose.
-- [x] Gradle Wrapper 8.9.
-- [x] Stockage chiffré via `EncryptedSharedPreferences`.
-- [x] Cleartext autorisé seulement en debug.
-- [x] Cleartext refusé en release.
-- [x] Session expirée gérée.
-- [ ] Ajouter CI Android.
-- [ ] Ajouter tests UI Compose et tests instrumentés.
-- [ ] Ajouter signature release réelle.
-- [ ] Remplacer l’URL release placeholder.
-- [ ] Ajouter Storage Access Framework pour les exports CSV.
-- [ ] Ajouter gestion fine de perte réseau.
-- [ ] Ajouter mode hors-ligne ou décider explicitement qu’il n’existe pas.
-- [ ] Vérifier accessibilité TalkBack.
-- [ ] Préparer publication Play Store si nécessaire.
-
-## iOS
-
-- [ ] Créer le projet iOS.
-- [ ] Aligner les DTO sur le backend.
-- [ ] Implémenter auth, voyages, personnes, dépenses, résumé, invitations, audit.
-- [ ] Ajouter stockage sécurisé Keychain.
-- [ ] Ajouter tests.
-
-## DevOps
-
-- [x] Docker Compose local PostgreSQL + backend.
-- [x] CI backend et frontend.
-- [ ] Ajouter CI Android.
-- [ ] Ajouter build Docker reproductible avec tags.
-- [ ] Ajouter reverse proxy TLS.
-- [ ] Ajouter configuration par secrets.
-- [ ] Ajouter monitoring, alerting, environnements distincts et rollback.
-
-## Produit / conformité
-
-- [ ] Conditions d’utilisation.
-- [ ] Politique de confidentialité.
-- [ ] Mentions légales.
-- [ ] Procédure de suppression de compte.
-- [ ] Export des données personnelles.
-- [ ] Analyse RGPD minimale.
-- [ ] Support utilisateur.
-- [ ] Onboarding clair.
-- [ ] Texte expliquant que le RAV privé peut parfois être inféré indirectement par les calculs.
-
-## Décision de statut
-
-Le projet peut être considéré comme cohérent pour une bêta locale fermée si les tests passent et si les parcours manuels principaux sont validés sur web et Android.
-
-Il ne doit pas être considéré comme prêt pour une production publique tant que les points sécurité, DevOps, RGPD, monitoring, CI Android et tests E2E ne sont pas traités.
+À ajouter pour un go/no-go public : restauration PostgreSQL complète, test SMTP réel, alerting externe, scan headers HTTPS, test AAB signé si Android public.

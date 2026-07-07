@@ -38,6 +38,7 @@ ctx.hydrateUserUi = function () {
     if (connected) {
         if ($("topUserName")) $("topUserName").textContent = state.user.displayName || state.user.email;
         if ($("accountEmailDisplay")) $("accountEmailDisplay").textContent = state.user.email || "—";
+        if ($("accountEmailVerifiedDisplay")) $("accountEmailVerifiedDisplay").textContent = (state.profile?.emailVerified ?? state.user.emailVerified) ? "Oui" : "Non";
         if ($("accountDisplayNameDisplay")) $("accountDisplayNameDisplay").textContent = state.user.displayName || "—";
         if ($("accountEmail")) $("accountEmail").value = state.user.email || "";
         if ($("accountDisplayName")) $("accountDisplayName").value = state.user.displayName || "";
@@ -54,6 +55,8 @@ ctx.loadProfile = async function (render = true) {
     if (!state.user?.accessToken) return;
     try {
         state.profile = await api("/auth/profile");
+        state.user = { ...state.user, emailVerified: state.profile.emailVerified };
+        writeJson("achabitation.user", state.user);
         writeJson("achabitation.profile", state.profile);
         if (render) ctx.renderProfile();
     } catch (error) {
@@ -212,6 +215,7 @@ ctx.saveProfile = async function (event) {
     try {
         state.profile = await api("/auth/profile", { method: "PUT", body: JSON.stringify(ctx.profilePayload()) });
         state.user.displayName = state.profile.displayName;
+        state.user.emailVerified = state.profile.emailVerified;
         writeJson("achabitation.user", state.user);
         writeJson("achabitation.profile", state.profile);
         ctx.hydrateUserUi();

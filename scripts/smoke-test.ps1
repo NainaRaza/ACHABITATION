@@ -14,18 +14,18 @@ function Invoke-Json($Method, $Uri, $Body = $null, $Token = $null) {
   return Invoke-RestMethod -Method $Method -Uri $Uri -Headers $headers -ContentType "application/json; charset=utf-8" -Body ($Body | ConvertTo-Json -Depth 20)
 }
 
-Write-Host "[1/10] Healthcheck"
+Write-Host "[1/11] Healthcheck"
 Invoke-Json GET "$BaseUrl/health" | Out-Null
 Invoke-Json GET "$BaseUrl/health/readiness" | Out-Null
 
-Write-Host "[2/10] Création compte owner"
+Write-Host "[2/11] Création compte owner"
 $owner = Invoke-Json POST "$BaseUrl/auth/register" @{
   email = "owner-$stamp@example.com"
   displayName = "Owner Beta"
   password = "motdepassefort"
 }
 
-Write-Host "[3/10] Création voyage"
+Write-Host "[3/11] Création voyage"
 $trip = Invoke-Json POST "$BaseUrl/trips" @{
   name = "Smoke test $stamp"
   startDate = "2026-08-01"
@@ -34,7 +34,7 @@ $trip = Invoke-Json POST "$BaseUrl/trips" @{
   customConstraints = @("Sans porc")
 } $owner.accessToken
 
-Write-Host "[4/10] Création participant·es"
+Write-Host "[4/11] Création participant·es"
 $sofia = Invoke-Json POST "$BaseUrl/trips/$($trip.id)/persons" @{
   name = "Sofia"
   livingRest = 2000
@@ -59,7 +59,7 @@ $karim = Invoke-Json POST "$BaseUrl/trips/$($trip.id)/persons" @{
   presencePeriods = @(@{ startDate = "2026-08-01"; endDate = "2026-08-15" })
 } $owner.accessToken
 
-Write-Host "[5/10] Création dépenses"
+Write-Host "[5/11] Création dépenses"
 Invoke-Json POST "$BaseUrl/trips/$($trip.id)/expenses" @{
   title = "Courses"
   date = "2026-08-02"
@@ -90,11 +90,11 @@ Invoke-Json POST "$BaseUrl/trips/$($trip.id)/expenses" @{
   exchangeRateToTripCurrency = 1
 } $owner.accessToken | Out-Null
 
-Write-Host "[6/10] Résumé"
+Write-Host "[6/11] Résumé"
 $summary = Invoke-Json GET "$BaseUrl/trips/$($trip.id)/summary" $null $owner.accessToken
 if ($summary.balances.Count -lt 2) { throw "Résumé invalide : balances insuffisantes" }
 
-Write-Host "[7/10] Invitation et contrôle membre"
+Write-Host "[7/11] Invitation et contrôle membre"
 $invitation = Invoke-Json POST "$BaseUrl/trips/$($trip.id)/invitations" @{
   roleToGrant = "PARTICIPANT"
   expiresInDays = 7
@@ -110,13 +110,23 @@ Invoke-Json POST "$BaseUrl/trips/$($trip.id)/join" @{
 } $member.accessToken | Out-Null
 Invoke-Json GET "$BaseUrl/trips/$($trip.id)/persons" $null $member.accessToken | Out-Null
 
-Write-Host "[8/10] Exports CSV"
+Write-Host "[8/11] Exports CSV"
 Invoke-WebRequest -Method GET -Uri "$BaseUrl/trips/$($trip.id)/exports/expenses.csv" -Headers @{ Authorization = "Bearer $($owner.accessToken)" } | Out-Null
 Invoke-WebRequest -Method GET -Uri "$BaseUrl/trips/$($trip.id)/exports/summary.csv" -Headers @{ Authorization = "Bearer $($owner.accessToken)" } | Out-Null
 
-Write-Host "[9/10] Audit"
+Write-Host "[9/11] Audit"
 $audit = Invoke-Json GET "$BaseUrl/trips/$($trip.id)/audit-logs" $null $owner.accessToken
 if ($audit.Count -lt 5) { throw "Audit insuffisant" }
 
-Write-Host "[10/10] Smoke test OK"
+Write-Host "[10/11] Logout serveur"
+Invoke-Json POST "$BaseUrl/auth/logout" $null $owner.accessToken | Out-Null
+try {
+  Invoke-Json GET "$BaseUrl/auth/profile" $null $owner.accessToken | Out-Null
+  throw "Logout invalide : /auth/profile accepte encore le token"
+} catch {
+  $status = $_.Exception.Response.StatusCode.value__
+  if ($status -ne 401) { throw }
+}
+
+Write-Host "[11/11] Smoke test OK"
 Write-Host "Voyage créé : $($trip.id)"

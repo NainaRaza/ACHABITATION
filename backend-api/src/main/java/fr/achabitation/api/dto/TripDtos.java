@@ -5,6 +5,7 @@ import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -18,13 +19,13 @@ public final class TripDtos {
             @NotBlank @Size(max = 160) String name,
             @NotNull LocalDate startDate,
             @NotNull LocalDate endDate,
-            @Size(min = 3, max = 3) String referenceCurrency,
+            @Pattern(regexp = "[A-Z]{3}", message = "doit être une devise ISO 4217 sur 3 lettres majuscules") String referenceCurrency,
             UUID ownerUserId,
-            Set<String> customConstraints
+            @Size(max = 50) Set<@NotBlank @Size(max = 120) String> customConstraints
     ) {}
 
     public record TripConstraintUpdateRequest(
-            Set<String> customConstraints
+            @Size(max = 50) Set<@NotBlank @Size(max = 120) String> customConstraints
     ) {}
 
     public record JoinTripRequest(

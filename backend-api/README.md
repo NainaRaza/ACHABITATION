@@ -29,6 +29,8 @@ URLs exposées :
 API        : http://localhost:8080/api/v1
 Health     : http://localhost:8080/api/v1/health
 Readiness  : http://localhost:8080/api/v1/health/readiness
+OpenAPI    : http://localhost:8080/v3/api-docs
+Swagger UI : http://localhost:8080/swagger-ui.html
 H2 console : http://localhost:8080/h2-console
 ```
 
@@ -52,7 +54,7 @@ Le profil `prod` utilise PostgreSQL, Flyway et `ddl-auto=validate` :
 $env:SPRING_PROFILES_ACTIVE="prod"
 $env:DATABASE_URL="jdbc:postgresql://localhost:5432/achabitation"
 $env:DATABASE_USER="achabitation"
-$env:DATABASE_PASSWORD="achabitation"
+$env:DATABASE_PASSWORD="mot-de-passe-local-fort"
 ./mvnw spring-boot:run
 ```
 
@@ -70,7 +72,7 @@ Depuis la racine du projet :
 docker compose -f infra/docker-compose.yml up --build
 ```
 
-Ce mode lance PostgreSQL 16 et le backend avec `SPRING_PROFILES_ACTIVE=prod`.
+Ce mode lance PostgreSQL 16 et le backend avec `SPRING_PROFILES_ACTIVE=prod`. Il nécessite des variables définies dans un fichier `.env` local basé sur `.env.example`; aucun mot de passe de production ne doit être codé en dur.
 
 ## Tests backend
 
@@ -111,6 +113,19 @@ La déconnexion invalide la session côté serveur :
 POST /api/v1/auth/logout
 ```
 
+Le changement de mot de passe connecté force une rotation du token et invalide l'ancien token opaque :
+
+```http
+PUT /api/v1/auth/password
+```
+
+L'export de compte et la suppression/anonymisation sont disponibles pour préparer le socle RGPD :
+
+```http
+GET    /api/v1/auth/export
+DELETE /api/v1/auth/account
+```
+
 `/register` et `/login` sont protégés par un rate limiting mémoire : 12 tentatives par IP et par action sur une fenêtre de 10 minutes. Ce mécanisme convient à une bêta locale ; il doit être remplacé par une solution distribuée si l’application est exposée publiquement.
 
 ## CORS local
@@ -122,7 +137,7 @@ http://localhost:5173
 http://127.0.0.1:5173
 ```
 
-La configuration est dans `src/main/java/fr/achabitation/config/SecurityConfig.java`.
+La configuration est dans `src/main/java/fr/achabitation/config/SecurityConfig.java`. Les routes API fonctionnent en mode stateless : le `SecurityContext` est alimenté par le filtre de token opaque.
 
 ## Organisation interne
 
@@ -143,11 +158,14 @@ Authentification et profil :
 ```text
 POST /api/v1/auth/register
 POST /api/v1/auth/login
-POST /api/v1/auth/logout
-GET  /api/v1/auth/profile
-PUT  /api/v1/auth/account
-PUT  /api/v1/auth/profile
-POST /api/v1/auth/profile/apply-to-linked-persons
+POST   /api/v1/auth/logout
+GET    /api/v1/auth/profile
+PUT    /api/v1/auth/account
+PUT    /api/v1/auth/password
+GET    /api/v1/auth/export
+DELETE /api/v1/auth/account
+PUT    /api/v1/auth/profile
+POST   /api/v1/auth/profile/apply-to-linked-persons
 ```
 
 Voyages et invitations :
@@ -194,3 +212,18 @@ POST /api/v1/trips/{tripId}/persons/current-user
 ```
 
 Cette route crée une personne directement liée au compte authentifié. Si `applyProfileToPerson=true`, les données du profil utilisateur sont copiées vers la personne créée. Sinon, la personne est créée en mode `AVERAGE`, ce qui permet un ajout valide même si le profil ne contient pas encore de RAV exploitable.
+
+## OpenAPI / Swagger
+
+La documentation OpenAPI est générée en profil local via Springdoc :
+
+```text
+GET /v3/api-docs
+GET /swagger-ui.html
+```
+
+En profil `prod`, Swagger UI et `/v3/api-docs` sont désactivés par défaut dans `application-prod.yml`. Pour exporter un contrat API versionné, lancer le backend en profil local/test puis sauvegarder la réponse de `/v3/api-docs` dans un fichier `openapi.json`.
+
+## Observabilité minimale
+
+Chaque requête reçoit ou propage un en-tête `X-Request-ID`. Ce même identifiant est placé dans les logs via le MDC afin de corréler une erreur utilisateur avec les traces serveur sans journaliser de token ni de RAV sensible.

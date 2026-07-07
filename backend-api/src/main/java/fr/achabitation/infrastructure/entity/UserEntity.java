@@ -95,6 +95,12 @@ public class UserEntity {
     @Column(nullable = false)
     private Instant createdAt = Instant.now();
 
+    private Instant emailVerifiedAt;
+
+    private Instant emailVerificationRequestedAt;
+
+    private Instant deletedAt;
+
     public UUID getId() { return id; }
     public void setId(UUID id) { this.id = id; }
     public String getEmail() { return email; }
@@ -141,4 +147,11 @@ public class UserEntity {
     public void setCustomConstraints(Set<String> customConstraints) { this.customConstraints = customConstraints == null ? new LinkedHashSet<>() : customConstraints; }
     public Instant getCreatedAt() { return createdAt; }
     public void setCreatedAt(Instant createdAt) { this.createdAt = createdAt; }
+    public Instant getEmailVerifiedAt() { return emailVerifiedAt; }
+    public void setEmailVerifiedAt(Instant emailVerifiedAt) { this.emailVerifiedAt = emailVerifiedAt; }
+    public Instant getEmailVerificationRequestedAt() { return emailVerificationRequestedAt; }
+    public void setEmailVerificationRequestedAt(Instant emailVerificationRequestedAt) { this.emailVerificationRequestedAt = emailVerificationRequestedAt; }
+    public Instant getDeletedAt() { return deletedAt; }
+    public void setDeletedAt(Instant deletedAt) { this.deletedAt = deletedAt; }
+    public boolean isEmailVerified() { return emailVerifiedAt != null; }
 }

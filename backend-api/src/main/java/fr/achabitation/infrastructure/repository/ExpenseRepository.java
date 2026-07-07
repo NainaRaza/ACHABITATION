@@ -8,4 +8,5 @@ import java.util.UUID;
 
 public interface ExpenseRepository extends JpaRepository<ExpenseEntity, UUID> {
     List<ExpenseEntity> findByTripIdOrderByDateAscTitleAsc(UUID tripId);
+    List<ExpenseEntity> findByPayerLinkedUserId(UUID linkedUserId);
 }

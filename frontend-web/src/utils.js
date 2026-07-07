@@ -29,3 +29,12 @@ export function constraintKey(value) {
         .replace(/[\u0300-\u036f]/g, "")
         .toLowerCase();
 }
+
+
+export function parseCsvSet(value) {
+    return Array.from(new Map(String(value ?? "")
+        .split(/[,;\n]/)
+        .map(canonicalConstraintName)
+        .filter(Boolean)
+        .map(name => [constraintKey(name), name])).values());
+}

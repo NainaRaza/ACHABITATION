@@ -21,4 +21,11 @@ class ParsingTest {
         assertEquals(10.0, parsed["Halal"]!!, 0.0001)
         assertEquals(4.5, parsed["Végétarien"]!!, 0.0001)
     }
+
+    @Test
+    fun positive_custom_amounts_keeps_only_positive_numeric_values() {
+        val parsed = positiveCustomAmounts(mapOf("Vegan" to "12,50", "PMR" to "0", "Sans porc" to "abc"))
+        assertEquals(1, parsed.size)
+        assertEquals(12.5, parsed["Vegan"]!!, 0.0001)
+    }
 }
