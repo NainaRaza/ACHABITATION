@@ -1,3 +1,9 @@
+import org.gradle.api.DefaultTask
+import org.gradle.api.GradleException
+import org.gradle.api.provider.Property
+import org.gradle.api.tasks.Input
+import org.gradle.api.tasks.TaskAction
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
@@ -11,10 +17,31 @@ fun configuredApiBaseUrl(defaultValue: String): String =
         .orElse(defaultValue)
         .get()
 
+fun configuredApiBaseUrlProvider(defaultValue: String) =
+    providers.gradleProperty("ACHABITATION_API_BASE_URL")
+        .orElse(providers.environmentVariable("ACHABITATION_API_BASE_URL"))
+        .orElse(defaultValue)
+
 fun quoted(value: String): String = "\"$value\""
 
-val releaseApiBaseUrl = configuredApiBaseUrl("https://api.achabitation.example/api/v1")
+val releaseApiBaseUrlProvider = configuredApiBaseUrlProvider("https://api.achabitation.example/api/v1")
+val releaseApiBaseUrl = releaseApiBaseUrlProvider.get()
 
+abstract class CheckReleaseApiBaseUrlTask : DefaultTask() {
+    @get:Input
+    abstract val apiBaseUrl: Property<String>
+
+    @TaskAction
+    fun check() {
+        val url = apiBaseUrl.get()
+        if (!url.startsWith("https://")) {
+            throw GradleException("ACHABITATION_API_BASE_URL doit être en HTTPS pour une release Android.")
+        }
+        if (url.contains("localhost") || url.contains("10.0.2.2") || url.contains("127.0.0.1")) {
+            throw GradleException("ACHABITATION_API_BASE_URL release ne doit pas pointer vers une URL locale/debug.")
+        }
+    }
+}
 
 android {
     namespace = "fr.achabitation.mobile"
@@ -86,15 +113,8 @@ dependencies {
 }
 
 
-tasks.register("checkReleaseApiBaseUrl") {
+tasks.register<CheckReleaseApiBaseUrlTask>("checkReleaseApiBaseUrl") {
     group = "verification"
     description = "Vérifie que l'URL API Android release est HTTPS et non locale."
-    doLast {
-        if (!releaseApiBaseUrl.startsWith("https://")) {
-            throw GradleException("ACHABITATION_API_BASE_URL doit être en HTTPS pour une release Android.")
-        }
-        if (releaseApiBaseUrl.contains("localhost") || releaseApiBaseUrl.contains("10.0.2.2") || releaseApiBaseUrl.contains("127.0.0.1")) {
-            throw GradleException("ACHABITATION_API_BASE_URL release ne doit pas pointer vers une URL locale/debug.")
-        }
-    }
+    apiBaseUrl.set(releaseApiBaseUrlProvider)
 }
