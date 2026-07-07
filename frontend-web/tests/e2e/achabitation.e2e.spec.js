@@ -8,6 +8,17 @@ function json(status, body) {
   };
 }
 
+
+async function openAccountPanel(page) {
+  await page.click("#topProfileBtn");
+  await expect(page.locator("#profilePanel")).toHaveClass(/active/);
+}
+
+async function closeAccountPanel(page) {
+  await page.click("#closeProfilePanelBtn");
+  await expect(page.locator("#dashboardTab")).toHaveClass(/active/);
+}
+
 async function mockApi(page) {
   const db = {
     users: [],
@@ -97,12 +108,14 @@ async function mockApi(page) {
 test("inscription, voyage, participant, dépense et résumé", async ({ page }) => {
   await mockApi(page);
   await page.goto("/");
+  await openAccountPanel(page);
 
   await page.fill("#registerEmail", "alpha@example.test");
   await page.fill("#registerDisplayName", "Alpha");
   await page.fill("#registerPassword", "password123");
   await page.click("#createUserBtn");
   await expect(page.locator("#messageBox")).toContainText("Compte créé");
+  await closeAccountPanel(page);
 
   await page.click("#showTripFormBtn");
   await page.fill("#tripName", "Vacances test");
@@ -130,6 +143,7 @@ test("inscription, voyage, participant, dépense et résumé", async ({ page }) 
 test("erreur de connexion affichée proprement", async ({ page }) => {
   await mockApi(page);
   await page.goto("/");
+  await openAccountPanel(page);
 
   await page.fill("#loginIdentifier", "inconnu@example.test");
   await page.fill("#loginPassword", "password123");
@@ -141,6 +155,7 @@ test("erreur de connexion affichée proprement", async ({ page }) => {
 test("logout appelle le backend et nettoie la session locale", async ({ page }) => {
   const db = await mockApi(page);
   await page.goto("/");
+  await openAccountPanel(page);
 
   await page.fill("#registerEmail", "logout@example.test");
   await page.fill("#registerDisplayName", "Logout");

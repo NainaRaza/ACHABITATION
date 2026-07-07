@@ -80,6 +80,7 @@ dependencies {
     testImplementation("androidx.arch.core:core-testing:2.2.0")
     testImplementation("androidx.test:core:1.6.1")
     testImplementation("org.robolectric:robolectric:4.14.1")
+    testImplementation("com.squareup.okhttp3:mockwebserver:4.12.0")
 
     debugImplementation("androidx.compose.ui:ui-tooling")
 }

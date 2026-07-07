@@ -1,62 +1,56 @@
 package fr.achabitation.mobile
 
-import com.sun.net.httpserver.HttpServer
 import kotlinx.coroutines.test.runTest
+import okhttp3.mockwebserver.MockResponse
+import okhttp3.mockwebserver.MockWebServer
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.fail
+import org.junit.Before
 import org.junit.Test
-import java.net.InetSocketAddress
-import java.util.concurrent.atomic.AtomicReference
 
 class AchabitationApiTest {
-    private var server: HttpServer? = null
+    private lateinit var server: MockWebServer
+
+    @Before
+    fun setUp() {
+        server = MockWebServer()
+        server.start()
+    }
 
     @After
     fun tearDown() {
-        server?.stop(0)
+        server.shutdown()
     }
 
     @Test
     fun logout_calls_backend_with_current_access_token() = runTest {
-        val method = AtomicReference<String>()
-        val authorization = AtomicReference<String>()
-        server = HttpServer.create(InetSocketAddress("127.0.0.1", 0), 0).also { httpServer ->
-            httpServer.createContext("/api/v1/auth/logout") { exchange ->
-                method.set(exchange.requestMethod)
-                authorization.set(exchange.requestHeaders.getFirst("Authorization"))
-                exchange.sendResponseHeaders(200, -1)
-                exchange.close()
-            }
-            httpServer.start()
-        }
+        server.enqueue(MockResponse().setResponseCode(204))
 
         val api = AchabitationApi(
-            baseUrlProvider = { "http://127.0.0.1:${server!!.address.port}/api/v1" },
+            baseUrlProvider = { server.url("/api/v1").toString().removeSuffix("/") },
             tokenProvider = { "token-123" }
         )
 
         api.logout()
 
-        assertEquals("POST", method.get())
-        assertEquals("Bearer token-123", authorization.get())
+        val request = server.takeRequest()
+        assertEquals("/api/v1/auth/logout", request.path)
+        assertEquals("POST", request.method)
+        assertEquals("Bearer token-123", request.getHeader("Authorization"))
     }
 
     @Test
     fun logout_propagates_unauthorized_status() = runTest {
-        server = HttpServer.create(InetSocketAddress("127.0.0.1", 0), 0).also { httpServer ->
-            httpServer.createContext("/api/v1/auth/logout") { exchange ->
-                val payload = """{"error":"Unauthorized","details":["Authentification requise."]}"""
-                exchange.responseHeaders.add("Content-Type", "application/json;charset=UTF-8")
-                exchange.sendResponseHeaders(401, payload.toByteArray().size.toLong())
-                exchange.responseBody.use { it.write(payload.toByteArray()) }
-                exchange.close()
-            }
-            httpServer.start()
-        }
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(401)
+                .setHeader("Content-Type", "application/json;charset=UTF-8")
+                .setBody("""{"error":"Unauthorized","details":["Authentification requise."]}""")
+        )
 
         val api = AchabitationApi(
-            baseUrlProvider = { "http://127.0.0.1:${server!!.address.port}/api/v1" },
+            baseUrlProvider = { server.url("/api/v1").toString().removeSuffix("/") },
             tokenProvider = { "token-123" }
         )
 
