@@ -11,6 +11,7 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
@@ -31,7 +32,18 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http, SessionTokenAuthenticationFilter sessionTokenAuthenticationFilter) throws Exception {
         return http
-                .csrf(csrf -> csrf.disable())
+                .csrf(csrf -> csrf
+                        .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
+                        .ignoringRequestMatchers(
+                                "/h2-console/**",
+                                "/api/v1/auth/register",
+                                "/api/v1/auth/login",
+                                "/api/v1/auth/email/verification-request",
+                                "/api/v1/auth/email/verify",
+                                "/api/v1/auth/password/reset-request",
+                                "/api/v1/auth/password/reset"
+                        )
+                )
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .headers(headers -> headers
                         .frameOptions(frame -> frame.sameOrigin())
