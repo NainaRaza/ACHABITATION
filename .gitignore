@@ -37,3 +37,7 @@ backups/
 *.backup
 *.patch
 docs/PREPROD_P0_P3_STATUS.md
+# Les migrations Flyway doivent être versionnées
+!backend-api/src/main/resources/db/
+!backend-api/src/main/resources/db/migration/
+!backend-api/src/main/resources/db/migration/*.sql
