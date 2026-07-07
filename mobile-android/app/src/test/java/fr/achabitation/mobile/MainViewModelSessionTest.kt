@@ -153,7 +153,7 @@ class MainViewModelSessionTest {
         advanceUntilIdle()
 
         assertEquals("Voyage créé.", viewModel.state.message)
-        assertEquals("Voyage métier", viewModel.state.selectedTrip?.name)
+        assertEquals("Vacances métier", viewModel.state.selectedTrip?.name)
         assertEquals("EUR", api.lastTripCreateRequest?.referenceCurrency)
         assertEquals(setOf("Sans porc", "Sans lactose"), api.lastTripCreateRequest?.customConstraints)
         assertFalse(viewModel.state.loading)
