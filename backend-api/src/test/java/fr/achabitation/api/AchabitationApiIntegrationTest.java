@@ -24,6 +24,7 @@ import fr.achabitation.infrastructure.entity.UserEntity;
 import org.springframework.test.web.servlet.MvcResult;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
 
 import static org.hamcrest.Matchers.contains;
