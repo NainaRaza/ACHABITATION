@@ -77,13 +77,13 @@ POST /api/v1/auth/register
 POST /api/v1/auth/login
 ```
 
-Le backend renvoie un `accessToken` opaque. Le client l’envoie ensuite dans :
+Le backend génère une session opaque. Pour le web, le token est transmis en cookie `ACHABITATION_SESSION` `HttpOnly` et le champ `accessToken` est masqué lorsque la requête contient `X-Achabitation-Client: web`. Pour Android et les scripts, le backend peut encore renvoyer un `accessToken` opaque à envoyer ensuite dans :
 
 ```http
 Authorization: Bearer <accessToken>
 ```
 
-Le token brut n’est pas stocké en base. Seul son hash SHA-256 est conservé dans `app_user.session_token_hash`.
+Le token brut n’est pas stocké en base. Seul son hash SHA-256 est conservé côté serveur.
 
 Déconnexion :
 
@@ -144,7 +144,7 @@ Le backend refuse toute personne non liée au compte authentifié.
 
 ## Limites restantes
 
-- Le token actuel est un `accessToken` opaque hashé en base, pas une architecture complète refresh/access token.
+- La session actuelle est opaque et hashée en base. Le web utilise un cookie `HttpOnly`; Android et les scripts utilisent un token Bearer opaque. Ce n’est pas une architecture complète refresh/access token.
 - Le rate limiting est en mémoire.
 - La durée de session doit devenir configurable.
 - La matrice de droits doit continuer à être testée à chaque nouvelle route.

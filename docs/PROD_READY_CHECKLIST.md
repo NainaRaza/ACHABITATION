@@ -34,8 +34,8 @@
 | Validations serveur financières | Fait partiel renforcé | Ajout d'annotations Bean Validation sur dépenses, personnes, profil et devise. Ajout d'une migration SQL de contraintes `CHECK` PostgreSQL. |
 | Tests backend contre PostgreSQL | Fait optionnel | Ajout d'un test Testcontainers Postgres désactivé par défaut. À exécuter avec `ACHABITATION_POSTGRES_IT=true ./mvnw test`. |
 | Matrice de permissions métier | Fait partiel | Matrice documentée. Audit logs désormais owner/admin uniquement. Des tests supplémentaires restent utiles pour toutes les combinaisons owner/admin/participant/viewer. |
-| Stockage token web | Reste à faire | Le web reste en `localStorage`. Pour production publique, arbitrer cookie `HttpOnly Secure SameSite` ou CSP très stricte + tokens courts. |
-| Réduction des gros services backend | Fait partiel | `AccountSessionService`, `AccountEmailService`, `SecurityEventService` existent. `AuthService` garde encore profil/RGPD/reset et doit être réduit ensuite. |
+| Stockage token web | Fait bêta renforcée | Le web utilise `ACHABITATION_SESSION` en cookie `HttpOnly` avec `SameSite` et CSRF ciblé. Le token n’est plus stocké dans `localStorage`. En production, activer `Secure`, HTTPS strict et vérifier la configuration proxy. |
+| Réduction des gros services backend | Fait partiel renforcé | `AccountSessionService`, `AccountEmailService`, `SecurityEventService`, `UserProfileService` et `AccountDataService` isolent maintenant les responsabilités principales. `AuthService` reste à surveiller mais n’embarque plus export/anonymisation RGPD. |
 | Scan dépendances/images | Reste à faire | Maven/npm/Gradle/Docker audit à brancher en CI avant ouverture publique. |
 | Monitoring et alerting réels | Reste à faire infra | Les métriques existent ; alertes et dashboards restent à brancher. |
 | Audit accessibilité web | Reste à faire | Audit clavier/contrastes/labels/responsive réel non exécuté ici. |

@@ -63,6 +63,7 @@ public final class AuthDtos {
             String displayName,
             boolean emailVerified,
             String accessToken,
+            boolean sessionEstablished,
             String note
     ) {}
 

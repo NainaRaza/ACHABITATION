@@ -24,11 +24,11 @@ Le projet cible Java 21 et Spring Boot 3.5.15.
 
 ### Authentification
 
-Le vocabulaire `devToken` a été remplacé par `accessToken` côté API, front et scripts.
+Le vocabulaire `devToken` a été remplacé par `accessToken` côté API native/scripts.
 
-Le token est opaque. Le backend génère un token brut, le renvoie au client, puis stocke seulement son hash SHA-256 dans `app_user.session_token_hash`.
+Le token est opaque. Le backend génère un token brut, puis stocke seulement son hash SHA-256. Le web n’utilise plus de stockage token JavaScript : il envoie `X-Achabitation-Client: web`, reçoit une session `ACHABITATION_SESSION` en cookie `HttpOnly` et envoie un jeton CSRF sur les requêtes mutantes.
 
-L’API attend ensuite :
+Android et les scripts continuent d’utiliser :
 
 ```http
 Authorization: Bearer <accessToken>
@@ -117,7 +117,7 @@ Corrections appliquées :
 
 - Gradle Wrapper présent ;
 - Android Gradle Plugin `8.7.3` ;
-- Gradle `8.9` ;
+- Gradle `9.6.1` ;
 - stockage de session via `EncryptedSharedPreferences` ;
 - HTTP cleartext autorisé uniquement en variante debug ;
 - variante release configurée avec `usesCleartextTraffic=false` ;
@@ -127,7 +127,7 @@ Corrections appliquées :
 
 ## Points encore fragiles
 
-- CI Android présente dans `.github/workflows/ci.yml`, validation externe encore à confirmer.
+- CI Android présente dans `.github/workflows/ci.yml` et validée sur GitHub Actions.
 - Pas de tests E2E web avec navigateur réel.
 - Pas de refresh token ni rotation de session.
 - Rate limiting non distribué.

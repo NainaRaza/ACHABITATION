@@ -238,7 +238,7 @@ Backend : Java 21, Spring Boot 3.5.15, Spring Security, Spring Data JPA, H2 loca
 
 Frontend web : HTML/CSS/JavaScript sans framework, modules ES, serveur local via scripts `run-web`.
 
-Android : Kotlin, Jetpack Compose, Material 3, kotlinx.serialization, EncryptedSharedPreferences, Gradle 8.9.
+Android : Kotlin, Jetpack Compose, Material 3, kotlinx.serialization, EncryptedSharedPreferences, Gradle 9.6.1.
 
 ## 9. Tests
 

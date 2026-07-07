@@ -43,12 +43,13 @@ async function mockApi(page) {
     const path = url.pathname.replace("/api/v1", "");
     const method = request.method();
     const token = request.headers().authorization?.replace("Bearer ", "");
+    expect(token).toBeUndefined();
     const body = request.postDataJSON?.() ?? null;
 
     if (path === "/health") return route.fulfill(json(200, { status: "UP" }));
     if (path === "/auth/csrf" && method === "GET") return route.fulfill(json(200, { note: "CSRF prêt." }));
     if (path === "/auth/register" && method === "POST") {
-      const user = { userId: id("user"), email: body.email, displayName: body.displayName, accessToken: id("token") };
+      const user = { userId: id("user"), email: body.email, displayName: body.displayName, accessToken: id("token"), sessionEstablished: true };
       db.users.push(user);
       currentSessionUserId = user.userId;
       return route.fulfill(json(200, user));
@@ -128,6 +129,7 @@ test("inscription, voyage, participant, dépense et résumé", async ({ page }) 
   await page.fill("#registerPassword", "password123");
   await page.click("#createUserBtn");
   await expect(page.locator("#messageBox")).toContainText("Compte créé");
+  await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem("achabitation.user") || "{}").accessToken ?? null)).toBe(null);
   await closeAccountPanel(page);
 
   await page.click("#showTripFormBtn");

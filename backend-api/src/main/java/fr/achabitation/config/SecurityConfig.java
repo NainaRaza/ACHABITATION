@@ -91,7 +91,7 @@ public class SecurityConfig {
                 .toList();
         configuration.setAllowedOrigins(origins);
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
-        configuration.setAllowedHeaders(List.of("Authorization", "X-Session-Token", "Content-Type", "X-Request-ID", "X-XSRF-TOKEN"));
+        configuration.setAllowedHeaders(List.of("Authorization", "X-Session-Token", "Content-Type", "X-Request-ID", "X-XSRF-TOKEN", "X-Achabitation-Client"));
         configuration.setExposedHeaders(List.of("Content-Disposition", "X-Request-ID"));
         configuration.setAllowCredentials(true);
 

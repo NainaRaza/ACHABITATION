@@ -56,13 +56,13 @@ public class AuthController {
     @PostMapping("/register")
     public AuthResponse register(HttpServletRequest httpRequest, HttpServletResponse httpResponse, @Valid @RequestBody RegisterRequest request) {
         loginRateLimiter.check(httpRequest, "register");
-        return withSessionCookie(httpResponse, authService.register(request));
+        return withSessionCookie(httpRequest, httpResponse, authService.register(request));
     }
 
     @PostMapping("/login")
     public AuthResponse login(HttpServletRequest httpRequest, HttpServletResponse httpResponse, @Valid @RequestBody LoginRequest request) {
         loginRateLimiter.check(httpRequest, "login");
-        return withSessionCookie(httpResponse, authService.login(request));
+        return withSessionCookie(httpRequest, httpResponse, authService.login(request));
     }
 
     @PostMapping("/email/verification-request")
@@ -74,7 +74,7 @@ public class AuthController {
     @PostMapping("/email/verify")
     public AuthResponse confirmEmailVerification(HttpServletRequest httpRequest, HttpServletResponse httpResponse, @Valid @RequestBody EmailVerificationConfirmRequest request) {
         loginRateLimiter.check(httpRequest, "email-verification-confirm");
-        return withSessionCookie(httpResponse, authService.confirmEmailVerification(request));
+        return withSessionCookie(httpRequest, httpResponse, authService.confirmEmailVerification(request));
     }
 
     @PostMapping("/password/reset-request")
@@ -86,7 +86,7 @@ public class AuthController {
     @PostMapping("/password/reset")
     public AuthResponse resetPassword(HttpServletRequest httpRequest, HttpServletResponse httpResponse, @Valid @RequestBody PasswordResetConfirmRequest request) {
         loginRateLimiter.check(httpRequest, "password-reset-confirm");
-        return withSessionCookie(httpResponse, authService.resetPassword(request));
+        return withSessionCookie(httpRequest, httpResponse, authService.resetPassword(request));
     }
 
     @PostMapping("/logout")
@@ -129,7 +129,7 @@ public class AuthController {
 
     @PutMapping("/password")
     public AuthResponse changePassword(HttpServletRequest request, HttpServletResponse response, @Valid @RequestBody PasswordChangeRequest passwordRequest) {
-        return withSessionCookie(response, authService.changePassword(authContextService.requiredUser(request), passwordRequest));
+        return withSessionCookie(request, response, authService.changePassword(authContextService.requiredUser(request), passwordRequest));
     }
 
     @GetMapping("/export")
@@ -159,8 +159,23 @@ public class AuthController {
         return new OperationResponse("CSRF prêt.");
     }
 
-    private AuthResponse withSessionCookie(HttpServletResponse response, AuthResponse authResponse) {
+    private AuthResponse withSessionCookie(HttpServletRequest request, HttpServletResponse response, AuthResponse authResponse) {
         sessionCookieService.writeSessionCookie(response, authResponse);
+        if (isWebClient(request) && authResponse != null) {
+            return new AuthResponse(
+                    authResponse.userId(),
+                    authResponse.email(),
+                    authResponse.displayName(),
+                    authResponse.emailVerified(),
+                    null,
+                    authResponse.sessionEstablished(),
+                    authResponse.note()
+            );
+        }
         return authResponse;
+    }
+
+    private boolean isWebClient(HttpServletRequest request) {
+        return request != null && "web".equalsIgnoreCase(request.getHeader("X-Achabitation-Client"));
     }
 }

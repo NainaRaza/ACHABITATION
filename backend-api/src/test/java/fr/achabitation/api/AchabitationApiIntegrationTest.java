@@ -8,6 +8,7 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
+import jakarta.servlet.http.Cookie;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
@@ -16,6 +17,7 @@ import fr.achabitation.infrastructure.repository.PasswordResetTokenRepository;
 import fr.achabitation.infrastructure.repository.EmailVerificationTokenRepository;
 import fr.achabitation.infrastructure.repository.UserSessionRepository;
 import fr.achabitation.application.SessionTokenService;
+import fr.achabitation.application.SessionCookieService;
 import fr.achabitation.infrastructure.entity.PasswordResetTokenEntity;
 import fr.achabitation.infrastructure.entity.EmailVerificationTokenEntity;
 import fr.achabitation.infrastructure.entity.UserEntity;
@@ -44,6 +46,83 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @ActiveProfiles("test")
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_EACH_TEST_METHOD)
 class AchabitationApiIntegrationTest {
+
+    @Test
+    void webClientRegisterSetsHttpOnlyCookieAndMasksAccessToken() throws Exception {
+        MvcResult result = mockMvc.perform(post("/api/v1/auth/register")
+                        .header("X-Achabitation-Client", "web")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "email": "web-cookie@example.com",
+                                  "displayName": "Web Cookie",
+                                  "password": "motdepassefort"
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.userId").exists())
+                .andExpect(jsonPath("$.accessToken").value(nullValue()))
+                .andReturn();
+
+        List<String> setCookieHeaders = result.getResponse().getHeaders(HttpHeaders.SET_COOKIE);
+        org.junit.jupiter.api.Assertions.assertTrue(
+                setCookieHeaders.stream().anyMatch(header -> header.contains(SessionCookieService.SESSION_COOKIE_NAME)
+                        && header.contains("HttpOnly")
+                        && header.contains("SameSite=")),
+                "Le client web doit recevoir une session en cookie HttpOnly/SameSite."
+        );
+    }
+
+    @Test
+    void webClientCookieMutationsRequireCsrfToken() throws Exception {
+        MvcResult registerResult = mockMvc.perform(post("/api/v1/auth/register")
+                        .header("X-Achabitation-Client", "web")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "email": "csrf-web@example.com",
+                                  "displayName": "CSRF Web",
+                                  "password": "motdepassefort"
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andReturn();
+        Cookie sessionCookie = registerResult.getResponse().getCookie(SessionCookieService.SESSION_COOKIE_NAME);
+        org.junit.jupiter.api.Assertions.assertNotNull(sessionCookie);
+
+        String tripJson = """
+                {
+                  "name": "Voyage cookie web",
+                  "startDate": "2026-08-01",
+                  "endDate": "2026-08-15",
+                  "referenceCurrency": "EUR"
+                }
+                """;
+
+        mockMvc.perform(post("/api/v1/trips")
+                        .header("X-Achabitation-Client", "web")
+                        .cookie(sessionCookie)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(tripJson))
+                .andExpect(status().isForbidden());
+
+        MvcResult csrfResult = mockMvc.perform(get("/api/v1/auth/csrf")
+                        .header("X-Achabitation-Client", "web")
+                        .cookie(sessionCookie))
+                .andExpect(status().isOk())
+                .andReturn();
+        Cookie xsrfCookie = csrfResult.getResponse().getCookie("XSRF-TOKEN");
+        org.junit.jupiter.api.Assertions.assertNotNull(xsrfCookie);
+
+        mockMvc.perform(post("/api/v1/trips")
+                        .header("X-Achabitation-Client", "web")
+                        .header("X-XSRF-TOKEN", xsrfCookie.getValue())
+                        .cookie(sessionCookie, xsrfCookie)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(tripJson))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.name").value("Voyage cookie web"));
+    }
     @Autowired
     private MockMvc mockMvc;
 

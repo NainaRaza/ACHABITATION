@@ -51,11 +51,16 @@ ou par le localStorage :
 localStorage.setItem("achabitation.apiBaseUrl", "http://localhost:8080/api/v1")
 ```
 
+
+## Authentification web
+
+Le frontend web ne stocke pas le token de session dans `localStorage`. Il envoie `X-Achabitation-Client: web`, reçoit la session via le cookie `ACHABITATION_SESSION` `HttpOnly` et joint automatiquement le jeton CSRF `X-XSRF-TOKEN` sur les requêtes mutantes. `localStorage` reste utilisé uniquement pour l’URL API locale, l’utilisateur affiché, le profil et le voyage sélectionné.
+
 ## Organisation du code
 
 ```text
 app.js              point d’entrée léger et installation des modules
-src/api.js         appels HTTP, erreur 401, exports blob
+src/api.js         appels HTTP cookie HttpOnly + CSRF, erreur 401, exports blob
 src/state.js       état courant + localStorage
 src/ui.js          messages utilisateur
 src/utils.js       formatage dates/montants/contraintes

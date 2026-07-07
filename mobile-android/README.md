@@ -41,7 +41,7 @@ Le projet utilise :
 
 ```text
 Android Gradle Plugin : 8.7.3
-Gradle Wrapper        : 8.9
+Gradle Wrapper        : 9.6.1
 Kotlin                : 2.0.21
 compileSdk            : 35
 minSdk                : 26
@@ -124,7 +124,7 @@ La logique métier reste côté backend. L’application Android ne recalcule pa
 
 ## Limites actuelles
 
-- CI Android ajoutée dans `.github/workflows/ci.yml`; validation à confirmer sur GitHub Actions ou machine disposant des dépendances Gradle.
+- CI Android ajoutée dans `.github/workflows/ci.yml` et validée sur GitHub Actions.
 - Tests unitaires Android encore limités aux utilitaires et au client API ; pas encore de tests UI Compose.
 - Pas de tests instrumentés.
 - Pas de mode hors-ligne.

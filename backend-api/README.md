@@ -99,13 +99,17 @@ GET  /api/v1/health/**
 GET  /h2-console/** en développement local
 ```
 
-Les autres routes `/api/v1/**` exigent :
+Les autres routes `/api/v1/**` exigent une session valide.
+
+Pour le web, la session passe par le cookie `ACHABITATION_SESSION` `HttpOnly` et les requêtes mutantes authentifiées par cookie exigent le couple CSRF `XSRF-TOKEN` / `X-XSRF-TOKEN`. Le client web envoie `X-Achabitation-Client: web`; dans ce cas, le champ `accessToken` est masqué dans la réponse JSON.
+
+Pour Android et les scripts, la session passe par :
 
 ```http
 Authorization: Bearer <accessToken>
 ```
 
-Le token est opaque. Le backend renvoie le token brut à l’inscription ou à la connexion, puis stocke uniquement son hash SHA-256 dans `app_user.session_token_hash`. La durée de validité actuelle côté filtre est de 30 jours à partir de `session_token_issued_at`.
+Le token est opaque. Le backend stocke uniquement son hash côté serveur. La durée de validité actuelle est de 30 jours.
 
 La déconnexion invalide la session côté serveur :
 

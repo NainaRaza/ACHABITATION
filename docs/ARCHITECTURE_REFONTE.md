@@ -69,10 +69,12 @@ La persistance utilise Spring Data JPA. En local, la base est H2 fichier. En pro
 Le modèle de sécurité actuel est adapté à une bêta locale fermée :
 
 - inscription et login publics ;
-- routes applicatives protégées par `Authorization: Bearer <accessToken>` ;
+- routes applicatives protégées par session opaque ;
+- web : cookie `ACHABITATION_SESSION` `HttpOnly` + CSRF sur requêtes mutantes ;
+- Android/scripts : `Authorization: Bearer <accessToken>` ;
 - token brut non stocké en base ;
-- hash SHA-256 stocké dans `app_user.session_token_hash` ;
-- validité actuelle du token : 30 jours ;
+- hash SHA-256 stocké dans `user_session.token_hash` avec fallback legacy `app_user.session_token_hash` ;
+- validité actuelle de session : 30 jours ;
 - endpoint logout serveur ;
 - rate limiting mémoire sur login/register ;
 - rôles de voyage : `OWNER`, `ADMIN`, `PARTICIPANT`, `READ_ONLY`.
@@ -87,7 +89,7 @@ Le frontend est servi séparément du backend sur `http://localhost:5173` et app
 
 ## Android
 
-`mobile-android/` contient un client Kotlin / Jetpack Compose. Le token est stocké via `EncryptedSharedPreferences`. Le HTTP cleartext est autorisé en debug pour le backend local et refusé en release. La déconnexion mobile appelle le backend avant nettoyage local de session.
+`mobile-android/` contient un client Kotlin / Jetpack Compose. Le token Bearer natif est stocké via `EncryptedSharedPreferences`. Le HTTP cleartext est autorisé en debug pour le backend local et refusé en release. La déconnexion mobile appelle le backend avant nettoyage local de session.
 
 Structure principale :
 

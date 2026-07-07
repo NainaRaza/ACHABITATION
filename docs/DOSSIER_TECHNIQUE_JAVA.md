@@ -58,7 +58,7 @@ DTO principaux : `AuthDtos`, `TripDtos`, `PersonDtos`, `ExpenseDtos`, `SummaryDt
 
 ## Couche sécurité
 
-`SecurityConfig` désactive CSRF pour l’API locale, configure le CORS local, limite les routes publiques, impose l’authentification sur `/api/v1/**` et ajoute le filtre `SessionTokenAuthenticationFilter`.
+`SecurityConfig` active une protection CSRF ciblée pour les requêtes mutantes authentifiées par cookie web, configure le CORS local, limite les routes publiques, impose l’authentification sur `/api/v1/**` et ajoute le filtre `SessionTokenAuthenticationFilter`.
 
 Routes publiques :
 
@@ -69,7 +69,7 @@ GET  /api/v1/health/**
 GET  /h2-console/** en développement local
 ```
 
-`SessionTokenAuthenticationFilter` lit `Authorization: Bearer <accessToken>`, hashe le token reçu, vérifie le hash stocké en base et refuse les tokens émis depuis plus de 30 jours.
+`SessionTokenAuthenticationFilter` lit le cookie web `ACHABITATION_SESSION`, `Authorization: Bearer <accessToken>` ou le header transitoire `X-Session-Token`, hashe le token reçu, vérifie le hash stocké en base et refuse les sessions expirées ou révoquées.
 
 `SessionTokenService` génère un token brut aléatoire de 32 octets et stocke uniquement son hash SHA-256.
 
@@ -79,7 +79,7 @@ GET  /h2-console/** en développement local
 
 ### `AuthService`
 
-Création de compte, normalisation email, hash BCrypt, login, génération de session, logout, modification du compte, profil RAV et application explicite du profil aux personnes liées.
+Création de compte, normalisation email, hash BCrypt, login, génération de session, logout, modification du compte, reset password et vérification email. L’export RGPD et l’anonymisation ont été extraits dans `AccountDataService`; le profil RAV reste dans `UserProfileService`.
 
 ### `AuthorizationService`
 
@@ -181,7 +181,7 @@ cd frontend-web
 
 Le client Android est dans `mobile-android/`.
 
-Technologies : Kotlin, Jetpack Compose, Material 3, kotlinx.serialization, EncryptedSharedPreferences, Gradle 8.9, Android Gradle Plugin 8.7.3.
+Technologies : Kotlin, Jetpack Compose, Material 3, kotlinx.serialization, EncryptedSharedPreferences, Gradle 9.6.1, Android Gradle Plugin 8.7.3.
 
 Le client consomme les mêmes DTO que le backend via `AchabitationApi.kt` et `ApiModels.kt`.
 
@@ -190,8 +190,8 @@ Le client consomme les mêmes DTO que le backend via `AchabitationApi.kt` et `Ap
 - Authentification opaque correcte pour bêta, mais pas encore architecture production complète.
 - Rate limiting mémoire non distribué.
 - Pas de migrations incrémentales au-delà du schéma initial.
-- CI Android présente, validation externe encore à confirmer.
-- Pas de tests E2E navigateur.
+- CI Android présente et validée sur GitHub Actions.
+- Tests E2E navigateur Playwright présents dans `frontend-web/tests/e2e`.
 - Pas de client iOS.
 - Exports limités au CSV.
 - Pas de mode hors-ligne mobile.

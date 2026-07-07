@@ -11,7 +11,7 @@ Cette checklist décrit l’état attendu pour considérer le projet utilisable 
 - [x] Profil `prod` PostgreSQL.
 - [x] Migration initiale Flyway.
 - [x] Healthcheck et readiness database.
-- [x] Authentification par `accessToken` opaque.
+- [x] Authentification par session opaque : cookie `HttpOnly` + CSRF côté web, Bearer token côté Android/scripts.
 - [x] Token brut non stocké en base.
 - [x] Logout serveur.
 - [x] Rate limiting mémoire sur login/register.
@@ -57,7 +57,7 @@ Cette checklist décrit l’état attendu pour considérer le projet utilisable 
 
 - [x] Client Android Kotlin / Jetpack Compose présent.
 - [x] Gradle Wrapper présent.
-- [x] Gradle 8.9.
+- [x] Gradle 9.6.1.
 - [x] Android Gradle Plugin 8.7.3.
 - [x] URL API locale par défaut sur émulateur : `10.0.2.2`.
 - [x] Configuration possible de l’URL API.

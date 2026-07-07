@@ -4,23 +4,23 @@ Ce document décrit le modèle de sécurité actuellement implémenté. Il est a
 
 ## Authentification
 
-L’authentification utilise un token de session opaque.
+L’authentification utilise une session opaque stockée serveur sous forme hashée.
 
-Flux :
+Flux web :
 
 1. l’utilisateur crée un compte ou se connecte ;
 2. le backend génère un token brut aléatoire ;
-3. le token brut est renvoyé au client ;
-4. le backend stocke uniquement le hash SHA-256 du token ;
-5. le client envoie le token dans les appels suivants.
+3. le backend écrit `ACHABITATION_SESSION` en cookie `HttpOnly` avec attribut `SameSite` ;
+4. si le client envoie `X-Achabitation-Client: web`, le champ `accessToken` de la réponse JSON est masqué ;
+5. les requêtes mutantes web utilisent le cookie de session et le jeton CSRF `XSRF-TOKEN` / `X-XSRF-TOKEN`.
 
-Header recommandé :
+Flux Android, scripts et clients non navigateur :
 
 ```http
 Authorization: Bearer <accessToken>
 ```
 
-Le filtre accepte aussi `X-Session-Token`, mais il ne doit pas être privilégié dans les nouveaux clients. Le filtre valide le token puis alimente le `SecurityContext`; les contrôleurs récupèrent ensuite l’utilisateur courant depuis ce contexte.
+Le filtre accepte aussi `X-Session-Token`, mais il ne doit pas être privilégié dans les nouveaux clients. Le filtre valide le token, qu’il provienne du cookie, du header Bearer ou du header transitoire, puis alimente le `SecurityContext`.
 
 ## Stockage du token
 
@@ -33,7 +33,7 @@ app_user.session_token_issued_at
 
 Le token brut n’est pas stocké en base.
 
-Côté web : token en stockage local via le mécanisme existant du frontend.
+Côté web : le token n’est plus stocké dans `localStorage`. Le frontend conserve seulement les informations non sensibles de compte et s’appuie sur le cookie `HttpOnly`.
 
 Côté Android : token et informations de session stockés via `EncryptedSharedPreferences`.
 
@@ -112,9 +112,9 @@ La variante release définit `usesCleartextTraffic=false` et le ViewModel/API re
 
 - Pas de refresh token.
 - Pas de rotation avancée de session.
-- Pas de gestion multi-session complète.
-- Pas de reset de mot de passe.
-- Pas de vérification email.
+- Gestion multi-session existante, mais UX et supervision à compléter.
+- Reset de mot de passe présent.
+- Vérification email présente.
 - Rate limiting non distribué.
 - CORS non externalisé par environnement.
 - Durée de session non configurable.

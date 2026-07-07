@@ -100,13 +100,13 @@ global.fetch = async (url, options = {}) => {
   const method = options.method || "GET";
   const token = options.headers?.Authorization?.replace("Bearer ", "");
   const body = options.body ? JSON.parse(options.body) : null;
-  calls.push({ method, path, token, body });
+  calls.push({ method, path, token, headers: options.headers || {}, body });
 
   if (path === "/health") return jsonResponse(200, { status: "UP" });
   if (path === "/auth/csrf" && method === "GET") return jsonResponse(200, { note: "CSRF prêt." });
 
   if (path === "/auth/register" && method === "POST") {
-    const user = { userId: id("user"), email: body.email, displayName: body.displayName, accessToken: id("token") };
+    const user = { userId: id("user"), email: body.email, displayName: body.displayName, accessToken: id("token"), sessionEstablished: true };
     db.users.push(user);
     currentSessionUserId = user.userId;
     return jsonResponse(200, user);
@@ -187,6 +187,10 @@ el("registerDisplayName").value = "Alpha";
 el("registerPassword").value = "password123";
 await app.createUser();
 assert.equal(app.state.user.email, "alpha@example.com");
+assert.equal(app.state.user.accessToken, undefined);
+assert.ok(calls.every(call => !call.token));
+assert.ok(calls.some(call => call.headers["X-Achabitation-Client"] === "web"));
+assert.equal(JSON.parse(localStorage.getItem("achabitation.user")).accessToken, undefined);
 assert.equal(calls.at(-1).path, "/trips");
 
 el("tripName").value = "Vacances test";

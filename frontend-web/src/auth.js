@@ -82,7 +82,7 @@ ctx.createUser = async function () {
     try {
         const response = await api("/auth/register", { method: "POST", body: JSON.stringify(payload) });
         $("registerPassword").value = "";
-        if (response?.accessToken) {
+        if (response?.sessionEstablished) {
             state.user = sanitizeAuthUser(response);
             await ctx.afterAuthentication(response.note || "Compte créé et connecté.");
         } else {

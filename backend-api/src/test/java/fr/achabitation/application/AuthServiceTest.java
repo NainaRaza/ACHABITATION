@@ -88,22 +88,29 @@ class AuthServiceTest {
     void setUp() {
         authService = new AuthService(
                 userRepository,
-                personRepository,
                 passwordEncoder,
-                mapper,
                 sessionTokenService,
-                tripMemberRepository,
                 accountSessionService,
                 passwordResetTokenRepository,
                 emailVerificationTokenRepository,
                 accountEmailService,
                 securityEventService,
                 false,
-                tripInvitationRepository,
-                auditLogRepository,
-                expenseRepository,
                 new AccountIdentityService(userRepository),
-                userProfileService
+                new AccountDataService(
+                        userRepository,
+                        personRepository,
+                        mapper,
+                        tripMemberRepository,
+                        tripInvitationRepository,
+                        auditLogRepository,
+                        expenseRepository,
+                        userProfileService,
+                        passwordEncoder,
+                        sessionTokenService,
+                        accountSessionService,
+                        securityEventService
+                )
         );
     }
 

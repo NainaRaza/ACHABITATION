@@ -7,10 +7,7 @@ export const API = API_BASE_URL.replace(/\/$/, "");
 
 const CSRF_COOKIE_NAME = "XSRF-TOKEN";
 const CSRF_HEADER_NAME = "X-XSRF-TOKEN";
-
-export function accessToken() {
-    return state.user?.accessToken || state.user?.sessionToken || null;
-}
+const WEB_CLIENT_HEADER_NAME = "X-Achabitation-Client";
 
 export function sanitizeAuthUser(user) {
     if (!user) return null;
@@ -38,17 +35,24 @@ async function ensureCsrfToken() {
     await fetch(`${API}/auth/csrf`, {
         method: "GET",
         credentials: "include",
-        headers: { "Accept": "application/json" }
+        headers: { "Accept": "application/json", [WEB_CLIENT_HEADER_NAME]: "web" }
     });
     token = readCookie(CSRF_COOKIE_NAME);
     return token ? decodeURIComponent(token) : null;
 }
 
-export async function api(path, options = {}) {
-    const token = accessToken();
-    const authHeaders = token ? { "Authorization": `Bearer ${token}` } : {};
-    const method = (options.method || "GET").toUpperCase();
+function requestHeaders(method, options) {
     const csrfHeaders = {};
+    const baseHeaders = {
+        "Content-Type": "application/json",
+        [WEB_CLIENT_HEADER_NAME]: "web"
+    };
+    return { baseHeaders, csrfHeaders };
+}
+
+export async function api(path, options = {}) {
+    const method = (options.method || "GET").toUpperCase();
+    const { baseHeaders, csrfHeaders } = requestHeaders(method, options);
     if (isMutatingMethod(method) && !options.headers?.[CSRF_HEADER_NAME]) {
         const csrfToken = await ensureCsrfToken();
         if (csrfToken) csrfHeaders[CSRF_HEADER_NAME] = csrfToken;
@@ -56,7 +60,7 @@ export async function api(path, options = {}) {
 
     const response = await fetch(`${API}${path}`, {
         credentials: "include",
-        headers: { "Content-Type": "application/json", ...authHeaders, ...csrfHeaders, ...(options.headers || {}) },
+        headers: { ...baseHeaders, ...csrfHeaders, ...(options.headers || {}) },
         ...options,
         method
     });
@@ -91,10 +95,9 @@ export async function api(path, options = {}) {
 }
 
 export async function fetchBlob(path) {
-    const token = accessToken();
     const response = await fetch(`${API}${path}`, {
         credentials: "include",
-        headers: token ? { "Authorization": `Bearer ${token}` } : {}
+        headers: { [WEB_CLIENT_HEADER_NAME]: "web" }
     });
     if (response.status === 401) {
         throw new Error("Session expirée ou token invalide. Reconnecte-toi.");
@@ -104,4 +107,8 @@ export async function fetchBlob(path) {
         throw new Error(body?.details?.join("\n") || `${response.status} ${response.statusText}`);
     }
     return response.blob();
+}
+
+export function hasClientSession() {
+    return Boolean(state.user?.userId);
 }

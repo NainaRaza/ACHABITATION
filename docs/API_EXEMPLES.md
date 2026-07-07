@@ -6,14 +6,14 @@ Les exemples utilisent l’URL locale :
 http://localhost:8080/api/v1
 ```
 
-Les routes protégées exigent :
+Les exemples `curl` utilisent le mode script/natif :
 
 ```http
 Authorization: Bearer <accessToken>
 Content-Type: application/json
 ```
 
-Les UUID retournés par l’API sont représentés par des variables dans les exemples : `$TOKEN`, `$TRIP_ID`, `$PERSON_ID`, etc.
+Le frontend web utilise à la place le cookie `ACHABITATION_SESSION` `HttpOnly` et le header CSRF `X-XSRF-TOKEN` sur les requêtes mutantes. Les UUID retournés par l’API sont représentés par des variables dans les exemples : `$TOKEN`, `$TRIP_ID`, `$PERSON_ID`, etc.
 
 ## Healthcheck
 

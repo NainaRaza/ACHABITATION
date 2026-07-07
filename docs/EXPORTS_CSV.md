@@ -7,11 +7,13 @@ GET /api/v1/trips/{tripId}/exports/expenses.csv
 GET /api/v1/trips/{tripId}/exports/summary.csv
 ```
 
-Ils nécessitent une session valide :
+Ils nécessitent une session valide. Les clients Android/scripts utilisent :
 
 ```http
 Authorization: Bearer <accessToken>
 ```
+
+Le frontend web utilise le cookie `ACHABITATION_SESSION` `HttpOnly`.
 
 ## Format
 
