@@ -93,7 +93,11 @@ jobs:
       - name: Install frontend dependencies
         run: npm ci
       - name: Install Playwright browsers
-        run: npx playwright install --with-deps chromium
+        run: |
+          sudo rm -f /etc/apt/sources.list.d/azure-cli.sources
+          sudo rm -f /etc/apt/sources.list.d/microsoft-prod.sources
+          sudo rm -f /etc/apt/sources.list.d/microsoft-prod.list
+          npx playwright install --with-deps chromium
       - name: Playwright E2E tests
         run: npm run test:e2e
 

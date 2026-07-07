@@ -34,6 +34,7 @@ public class SecurityConfig {
         return http
                 .csrf(csrf -> csrf
                         .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
+                        .csrfTokenRequestHandler(new SpaCsrfTokenRequestHandler())
                         .requireCsrfProtectionMatcher(cookieAuthenticatedCsrfMatcher)
                         .ignoringRequestMatchers(
                                 "/h2-console/**",
