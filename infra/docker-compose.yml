@@ -6,8 +6,7 @@ services:
       POSTGRES_DB: achabitation
       POSTGRES_USER: ${DATABASE_USER:?DATABASE_USER must be set}
       POSTGRES_PASSWORD: ${DATABASE_PASSWORD:?DATABASE_PASSWORD must be set}
-    ports:
-      - "5432:5432"
+    # Pas de port exposé : PostgreSQL reste uniquement accessible sur le réseau Docker interne.
     volumes:
       - achabitation_pgdata:/var/lib/postgresql/data
 
@@ -30,7 +29,8 @@ services:
       SMTP_PASSWORD: ${SMTP_PASSWORD:?SMTP_PASSWORD must be set}
       MAIL_FROM: ${MAIL_FROM:?MAIL_FROM must be set}
     ports:
-      - "8080:8080"
+      # Bind local uniquement : en prod, nginx ou un tunnel local doit être le seul point d'entrée public.
+      - "127.0.0.1:${PORT:-8080}:8080"
 
 volumes:
   achabitation_pgdata:

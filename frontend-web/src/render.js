@@ -132,8 +132,13 @@ ctx.bindEvents = function () {
         ctx.resetExpenseForm();
         ctx.showPanel("expenseFormPanel");
     });
-    $("expenseAdvancedMode").addEventListener("change", ctx.renderManualParticipants);
+    $("expenseAdvancedMode").addEventListener("change", () => {
+        ctx.renderManualParticipants();
+        ctx.renderExpenseAllocationPreview();
+    });
     $("expenseType").addEventListener("change", ctx.updateExpenseFieldState);
+    $("expenseForm").addEventListener("input", ctx.renderExpenseAllocationPreview);
+    $("expenseForm").addEventListener("change", ctx.renderExpenseAllocationPreview);
 
     $("reloadSummaryBtn").addEventListener("click", ctx.loadSummary);
     $("exportExpensesCsvBtn")?.addEventListener("click", () => ctx.downloadExport("expenses.csv"));

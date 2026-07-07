@@ -34,6 +34,7 @@ ctx.resetExpenseForm = function () {
     ctx.renderExpensePersonOptions();
     ctx.renderExpenseCustomAmountRows({});
     ctx.updateExpenseFieldState();
+    ctx.renderExpenseAllocationPreview();
 };
 
 ctx.renderExpensePersonOptions = function () {
@@ -42,6 +43,7 @@ ctx.renderExpensePersonOptions = function () {
     payer.innerHTML = activePersons.map(p => `<option value="${p.id}">${ctx.escapeHtml(p.name)}</option>`).join("");
     ctx.renderManualParticipants();
     ctx.renderExpenseCustomAmountRows();
+    ctx.renderExpenseAllocationPreview();
 };
 
 ctx.collectExpenseCustomAmounts = function () {
@@ -89,6 +91,92 @@ ctx.renderManualParticipants = function () {
 
 ctx.updateExpenseFieldState = function () {
     ctx.renderManualParticipants();
+    ctx.renderExpenseAllocationPreview();
+};
+
+
+ctx.expenseDraftForPreview = function () {
+    return {
+        title: $("expenseTitle")?.value?.trim() || "Dépense en cours",
+        date: $("expenseDate")?.value || ctx.todayIso(),
+        totalAmount: ctx.asNumber("expenseTotal") || 0,
+        meatAmount: ctx.asNumber("expenseMeat") || 0,
+        alcoholAmount: ctx.asNumber("expenseAlcohol") || 0,
+        customConstraintAmounts: ctx.collectExpenseCustomAmounts(),
+        type: $("expenseType")?.value || "NORMAL",
+        advancedMode: !!$("expenseAdvancedMode")?.checked,
+        manualParticipantIds: Array.from(document.querySelectorAll("#manualParticipants input:checked")).map(input => input.value),
+        currency: $("expenseCurrency")?.value?.trim()?.toUpperCase() || selectedCurrency(),
+        exchangeRateToTripCurrency: ctx.asNumber("expenseExchangeRate") || 1
+    };
+};
+
+ctx.renderExpenseAllocationPreview = function () {
+    const container = $("expenseAllocationPreview");
+    if (!container) return;
+    if (!state.selectedTrip) {
+        container.innerHTML = `<p class="small">Sélectionne un voyage pour prévisualiser la répartition.</p>`;
+        return;
+    }
+
+    const expense = ctx.expenseDraftForPreview();
+    const eligible = state.persons.filter(ctx.canParticipateInAllocation);
+    if (!eligible.length) {
+        container.innerHTML = `<p class="small">Ajoute au moins une personne active avec un RAV exploitable, ou un mode moyenne, pour prévisualiser la répartition.</p>`;
+        return;
+    }
+
+    const baseParticipants = expense.advancedMode
+        ? eligible.filter(person => new Set(expense.manualParticipantIds || []).has(person.id))
+        : expense.type === "GLOBAL"
+            ? eligible
+            : eligible.filter(person => ctx.isPersonPresentOn(person, expense.date));
+
+    const total = Number(expense.totalAmount || 0);
+    const meat = Number(expense.meatAmount || 0);
+    const alcohol = Number(expense.alcoholAmount || 0);
+    const customEntries = Object.entries(expense.customConstraintAmounts || {}).filter(([, amount]) => Number(amount || 0) > 0);
+    const customTotal = customEntries.reduce((sum, [, amount]) => sum + Number(amount || 0), 0);
+    const specialisedTotal = meat + alcohol + customTotal;
+    const general = Math.max(0, total - specialisedTotal);
+
+    const chips = persons => persons.length
+        ? persons.map(person => `<span class="person-chip">${ctx.escapeHtml(person.name)}</span>`).join("")
+        : `<span class="badge warning">Aucune</span>`;
+
+    const rows = [];
+    if (general > 0) {
+        rows.push(`<li><strong>Part commune ${money(general, expense.currency)}</strong><br>${chips(baseParticipants)}</li>`);
+    }
+    if (meat > 0) {
+        const included = baseParticipants.filter(person => !person.vegetarian);
+        const excluded = baseParticipants.filter(person => person.vegetarian);
+        rows.push(`<li><strong>Part viande ${money(meat, expense.currency)}</strong><br>${chips(included)}${excluded.length ? `<br><span class="small">Exclu·es : ${excluded.map(person => ctx.escapeHtml(person.name)).join(", ")}</span>` : ""}</li>`);
+    }
+    if (alcohol > 0) {
+        const included = baseParticipants.filter(person => !person.noAlcohol);
+        const excluded = baseParticipants.filter(person => person.noAlcohol);
+        rows.push(`<li><strong>Part alcool ${money(alcohol, expense.currency)}</strong><br>${chips(included)}${excluded.length ? `<br><span class="small">Exclu·es : ${excluded.map(person => ctx.escapeHtml(person.name)).join(", ")}</span>` : ""}</li>`);
+    }
+    customEntries.forEach(([constraintName, amount]) => {
+        const included = baseParticipants.filter(person => !ctx.personHasCustomConstraint(person, constraintName));
+        const excluded = baseParticipants.filter(person => ctx.personHasCustomConstraint(person, constraintName));
+        rows.push(`<li><strong>${ctx.escapeHtml(constraintName)} ${money(amount, expense.currency)}</strong><br>${chips(included)}${excluded.length ? `<br><span class="small">Exclu·es : ${excluded.map(person => ctx.escapeHtml(person.name)).join(", ")}</span>` : ""}</li>`);
+    });
+
+    const warnings = [];
+    if (expense.advancedMode && !baseParticipants.length) warnings.push("Mode avancé actif : aucune personne cochée.");
+    if (!expense.advancedMode && expense.type === "NORMAL" && !baseParticipants.length) warnings.push("Aucune personne présente à cette date avec un RAV exploitable.");
+    if (specialisedTotal > total) warnings.push("Les montants viande, alcool et contraintes dépassent le total saisi.");
+
+    container.innerHTML = `
+        <div class="field-header">
+            <span class="field-label">Prévisualisation de la répartition</span>
+        </div>
+        <p class="small">${expense.type === "GLOBAL" ? "Mutualisée voyage : toutes les personnes éligibles sont prises en compte, puis les exclusions sont appliquées." : "Datée : seules les personnes présentes à la date choisie sont prises en compte, puis les exclusions sont appliquées."}</p>
+        ${warnings.map(message => `<p class="small warning-text">${ctx.escapeHtml(message)}</p>`).join("")}
+        ${rows.length ? `<ul class="allocation-preview-list">${rows.join("")}</ul>` : `<p class="small">Renseigne un total ou des montants par contrainte pour afficher le détail.</p>`}
+    `;
 };
 
 ctx.expensePayload = function () {
