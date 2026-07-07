@@ -1,5 +1,5 @@
 import { state, writeJson, asArray } from "./src/state.js";
-import { api, fetchBlob } from "./src/api.js";
+import { api, fetchBlob, sanitizeAuthUser } from "./src/api.js";
 import { $, showMessage, showApiError } from "./src/ui.js";
 import { money, dateFr, selectedCurrency, canonicalConstraintName, constraintKey, parseCsvSet } from "./src/utils.js";
 
@@ -21,6 +21,7 @@ const app = {
     asArray,
     api,
     fetchBlob,
+    sanitizeAuthUser,
     $,
     showMessage,
     showApiError,

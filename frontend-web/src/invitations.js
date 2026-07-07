@@ -5,7 +5,7 @@ export function install(ctx) {
     const { state, writeJson, asArray, api, fetchBlob, $, showMessage, showApiError, money, dateFr, selectedCurrency, canonicalConstraintName, constraintKey } = ctx;
 
 ctx.loadInvitations = async function (render = true) {
-    if (!state.selectedTrip?.id || !state.user?.accessToken) {
+    if (!state.selectedTrip?.id || !state.user?.userId) {
         state.invitations = [];
         if (render) ctx.renderInvitations();
         return;

@@ -207,7 +207,7 @@ ctx.disablePerson = async function (id) {
 };
 
 ctx.linkPersonToCurrentUser = async function (id) {
-    if (!state.user?.accessToken) {
+    if (!state.user?.userId) {
         showMessage("Connecte-toi avant de lier un guest à ton compte.", "error");
         return;
     }
@@ -261,7 +261,7 @@ ctx.renderPersons = function () {
         const options = [profileBadge, person.vegetarian ? "Végétarien" : null, person.noAlcohol ? "Sans alcool" : null, ...(person.customConstraints || []), !person.active ? "Désactivé" : null]
             .filter(Boolean).map(o => `<span class="badge">${ctx.escapeHtml(o)}</span>`).join("") || "—";
         const periods = (person.presencePeriods || []).map(p => `${dateFr(p.startDate)} → ${dateFr(p.endDate)}`).join("<br>");
-        const linkButton = state.user?.accessToken && person.guest
+        const linkButton = state.user?.userId && person.guest
             ? `<button class="secondary small-button" type="button" data-link-person="${person.id}">Lier à mon compte</button>`
             : "";
         return `

@@ -25,6 +25,10 @@ achabitation:
   security:
     mode: opaque-access-token
   auth:
+    cookie:
+      secure: false
+      same-site: Strict
+      max-age-days: 30
     require-email-verification: false
   app:
     public-url: http://localhost:3000

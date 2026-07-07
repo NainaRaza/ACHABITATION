@@ -5,7 +5,7 @@ export function install(ctx) {
     const { state, writeJson, asArray, api, fetchBlob, $, showMessage, showApiError, money, dateFr, selectedCurrency, canonicalConstraintName, constraintKey } = ctx;
 
 ctx.loadTrips = async function () {
-    if (!state.user?.accessToken) {
+    if (!state.user?.userId) {
         state.trips = [];
         state.selectedTrip = null;
         ctx.renderTrips();
@@ -17,7 +17,7 @@ ctx.loadTrips = async function () {
 
 ctx.createTrip = async function (event) {
     event.preventDefault();
-    if (!state.user?.accessToken) {
+    if (!state.user?.userId) {
         showMessage("Connecte-toi avant de créer un voyage.", "error");
         return;
     }
@@ -45,7 +45,7 @@ ctx.createTrip = async function (event) {
 };
 
 ctx.joinTripByInvitationCode = async function () {
-    if (!state.user?.accessToken) {
+    if (!state.user?.userId) {
         showMessage("Connecte-toi avant de rejoindre un voyage.", "error");
         ctx.openProfilePanel();
         return;
@@ -88,7 +88,7 @@ ctx.renderPostJoinClaimPanel = function () {
     const panel = $("postJoinClaimPanel");
     const container = $("postJoinGuestOptions");
     if (!panel || !container) return;
-    if (!state.user?.accessToken || !state.selectedTrip?.id || state.pendingClaimTripId !== state.selectedTrip.id || ctx.currentUserAlreadyLinkedInSelectedTrip()) {
+    if (!state.user?.userId || !state.selectedTrip?.id || state.pendingClaimTripId !== state.selectedTrip.id || ctx.currentUserAlreadyLinkedInSelectedTrip()) {
         panel.classList.add("hidden");
         return;
     }
@@ -115,7 +115,7 @@ ctx.renderPostJoinClaimPanel = function () {
 
 ctx.createCurrentUserPerson = async function () {
     if (!ctx.ensureTripSelected()) return;
-    if (!state.user?.accessToken) {
+    if (!state.user?.userId) {
         showMessage("Connecte-toi avant de t’ajouter au voyage.", "error");
         ctx.openProfilePanel();
         return;
@@ -192,7 +192,7 @@ ctx.refreshCurrent = async function () {
 
 ctx.downloadExport = async function (fileName) {
     if (!ctx.ensureTripSelected()) return;
-    if (!state.user?.accessToken) {
+    if (!state.user?.userId) {
         showMessage("Connecte-toi avant d’exporter les données.", "error");
         return;
     }

@@ -32,15 +32,15 @@ public class PersonService {
     private final EntityMapper mapper;
     private final AuditService auditService;
     private final AuthorizationService authorizationService;
-    private final AuthService authService;
+    private final UserProfileService userProfileService;
 
-    public PersonService(PersonRepository personRepository, TripService tripService, EntityMapper mapper, AuditService auditService, AuthorizationService authorizationService, AuthService authService) {
+    public PersonService(PersonRepository personRepository, TripService tripService, EntityMapper mapper, AuditService auditService, AuthorizationService authorizationService, UserProfileService userProfileService) {
         this.personRepository = personRepository;
         this.tripService = tripService;
         this.mapper = mapper;
         this.auditService = auditService;
         this.authorizationService = authorizationService;
-        this.authService = authService;
+        this.userProfileService = userProfileService;
     }
 
     @Transactional
@@ -85,8 +85,8 @@ public class PersonService {
 
         boolean applyProfile = request != null && request.applyProfileToPerson();
         if (applyProfile) {
-            authService.ensureValidUserProfile(user);
-            authService.applyUserProfileToPerson(user, person);
+            userProfileService.ensureValidUserProfile(user);
+            userProfileService.applyUserProfileToPerson(user, person);
         } else {
             applyDefaultLinkedPersonFields(person);
         }

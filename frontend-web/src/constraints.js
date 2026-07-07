@@ -31,7 +31,7 @@ ctx.addConstraintToSelectedTrip = async function (name) {
     await ctx.loadTrips();
     const refreshed = state.trips.find(t => t.id === state.selectedTrip.id);
     if (refreshed) state.selectedTrip = refreshed;
-    if (state.user?.accessToken) await ctx.loadProfile(false);
+    if (state.user?.userId) await ctx.loadProfile(false);
     return displayName;
 };
 

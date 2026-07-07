@@ -41,11 +41,11 @@ public class TripService {
     private final PersonRepository personRepository;
     private final EntityMapper mapper;
     private final AuditService auditService;
-    private final AuthService authService;
+    private final UserProfileService userProfileService;
     private final AuthorizationService authorizationService;
     private final SecureRandom secureRandom = new SecureRandom();
 
-    public TripService(TripRepository tripRepository, TripMemberRepository tripMemberRepository, TripInvitationRepository tripInvitationRepository, UserRepository userRepository, PersonRepository personRepository, EntityMapper mapper, AuditService auditService, AuthService authService, AuthorizationService authorizationService) {
+    public TripService(TripRepository tripRepository, TripMemberRepository tripMemberRepository, TripInvitationRepository tripInvitationRepository, UserRepository userRepository, PersonRepository personRepository, EntityMapper mapper, AuditService auditService, UserProfileService userProfileService, AuthorizationService authorizationService) {
         this.tripRepository = tripRepository;
         this.tripMemberRepository = tripMemberRepository;
         this.tripInvitationRepository = tripInvitationRepository;
@@ -53,7 +53,7 @@ public class TripService {
         this.personRepository = personRepository;
         this.mapper = mapper;
         this.auditService = auditService;
-        this.authService = authService;
+        this.userProfileService = userProfileService;
         this.authorizationService = authorizationService;
     }
 
@@ -144,7 +144,7 @@ public class TripService {
         TripEntity trip = getRequired(tripId);
         authorizationService.requireReadable(tripId, user);
         if (applyProfileToGuest) {
-            authService.ensureValidUserProfile(user);
+            userProfileService.ensureValidUserProfile(user);
         }
         PersonEntity person = personRepository.findById(personId)
                 .orElseThrow(() -> new IllegalArgumentException("Personne introuvable."));
@@ -162,7 +162,7 @@ public class TripService {
         userRepository.save(user);
         person.setLinkedUser(user);
         if (applyProfileToGuest) {
-            authService.applyUserProfileToPerson(user, person);
+            userProfileService.applyUserProfileToPerson(user, person);
         }
         person = personRepository.save(person);
         String detail = applyProfileToGuest
@@ -273,7 +273,7 @@ public class TripService {
 
     private void replaceTripConstraints(TripEntity trip, Set<String> constraints) {
         trip.getCustomConstraints().clear();
-        trip.getCustomConstraints().addAll(authService.normalizeConstraints(constraints));
+        trip.getCustomConstraints().addAll(userProfileService.normalizeConstraints(constraints));
     }
 
     private void validateTripDates(TripCreateRequest request) {

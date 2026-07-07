@@ -8,16 +8,27 @@ ctx.init = async function () {
     ctx.bindEvents();
     ctx.hydrateUserUi();
     await ctx.checkBackend();
-    if (state.user?.accessToken) {
-        await ctx.loadProfile(false);
-        await ctx.loadTrips();
-        if (state.selectedTrip?.id && state.trips.some(t => t.id === state.selectedTrip.id)) {
-            state.selectedTrip = state.trips.find(t => t.id === state.selectedTrip.id);
-            await ctx.loadTripData();
-        } else if (state.trips.length > 0) {
-            ctx.selectTrip(state.trips[0].id);
-        } else {
-            ctx.renderAll();
+    if (state.user?.userId) {
+        try {
+            await ctx.loadProfile(false);
+            await ctx.loadTrips();
+            if (state.selectedTrip?.id && state.trips.some(t => t.id === state.selectedTrip.id)) {
+                state.selectedTrip = state.trips.find(t => t.id === state.selectedTrip.id);
+                await ctx.loadTripData();
+            } else if (state.trips.length > 0) {
+                ctx.selectTrip(state.trips[0].id);
+            } else {
+                ctx.renderAll();
+            }
+        } catch (error) {
+            if (/session expirée|token invalide|authentification/i.test(error.message || "")) {
+                ctx.clearSessionState();
+                ctx.hydrateUserUi();
+                ctx.renderAll();
+                showMessage("Session expirée. Reconnecte-toi.", "error");
+            } else {
+                throw error;
+            }
         }
     } else {
         ctx.renderAll();

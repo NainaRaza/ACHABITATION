@@ -91,6 +91,7 @@ const db = {
   invitations: []
 };
 let nextId = 1;
+let currentSessionUserId = null;
 const id = prefix => `${prefix}-${nextId++}`;
 
 global.fetch = async (url, options = {}) => {
@@ -102,25 +103,31 @@ global.fetch = async (url, options = {}) => {
   calls.push({ method, path, token, body });
 
   if (path === "/health") return jsonResponse(200, { status: "UP" });
+  if (path === "/auth/csrf" && method === "GET") return jsonResponse(200, { note: "CSRF prêt." });
 
   if (path === "/auth/register" && method === "POST") {
     const user = { userId: id("user"), email: body.email, displayName: body.displayName, accessToken: id("token") };
     db.users.push(user);
+    currentSessionUserId = user.userId;
     return jsonResponse(200, user);
   }
 
   if (path === "/auth/login" && method === "POST") {
     const user = db.users.find(candidate => candidate.email === body.identifier || candidate.displayName === body.identifier);
     if (!user) return jsonResponse(401, { message: "Identifiants invalides" });
+    currentSessionUserId = user.userId;
     return jsonResponse(200, user);
   }
 
-  if (path === "/auth/logout" && method === "POST") return jsonResponse(204, null);
+  if (path === "/auth/logout" && method === "POST") { currentSessionUserId = null; return jsonResponse(204, null); }
 
-  if (!token) return jsonResponse(401, { message: "Session expirée" });
+  const authenticatedUser = token
+    ? db.users.find(candidate => candidate.accessToken === token)
+    : db.users.find(candidate => candidate.userId === currentSessionUserId);
+  if (!authenticatedUser) return jsonResponse(401, { message: "Session expirée" });
 
   if (path === "/auth/profile" && method === "GET") {
-    const user = db.users.find(candidate => candidate.accessToken === token);
+    const user = authenticatedUser;
     return jsonResponse(200, { userId: user?.userId, email: user?.email, displayName: user?.displayName, livingRest: 0, weightMode: "AVERAGE", customConstraints: [], linkedPersons: [] });
   }
 
@@ -132,7 +139,7 @@ global.fetch = async (url, options = {}) => {
     return jsonResponse(200, trip);
   }
 
-  const currentUser = db.users.find(candidate => candidate.accessToken === token);
+  const currentUser = authenticatedUser;
   const personsCurrentUserMatch = path.match(/^\/trips\/([^/]+)\/persons\/current-user$/);
   if (personsCurrentUserMatch && method === "POST") {
     const tripId = personsCurrentUserMatch[1];

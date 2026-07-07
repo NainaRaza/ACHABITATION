@@ -23,6 +23,10 @@ logging:
 
 achabitation:
   auth:
+    cookie:
+      secure: false
+      same-site: Strict
+      max-age-days: 30
     require-email-verification: false
   mail:
     enabled: false

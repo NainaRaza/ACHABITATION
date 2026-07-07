@@ -79,6 +79,9 @@ class AuthServiceTest {
     @Mock
     private ExpenseRepository expenseRepository;
 
+    @Mock
+    private UserProfileService userProfileService;
+
     private AuthService authService;
 
     @BeforeEach
@@ -98,7 +101,9 @@ class AuthServiceTest {
                 false,
                 tripInvitationRepository,
                 auditLogRepository,
-                expenseRepository
+                expenseRepository,
+                new AccountIdentityService(userRepository),
+                userProfileService
         );
     }
 

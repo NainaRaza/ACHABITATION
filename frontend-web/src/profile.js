@@ -8,7 +8,7 @@ ctx.openProfilePanel = async function () {
     document.querySelectorAll(".tab").forEach(b => b.classList.remove("active"));
     document.querySelectorAll(".tab-panel").forEach(panel => panel.classList.remove("active"));
     $("profilePanel")?.classList.add("active");
-    if (state.user?.accessToken) {
+    if (state.user?.userId) {
         await ctx.loadProfile();
     } else {
         ctx.renderProfile();
@@ -29,7 +29,7 @@ ctx.checkBackend = async function () {
 };
 
 ctx.hydrateUserUi = function () {
-    const connected = !!state.user?.accessToken;
+    const connected = !!state.user?.userId;
     $("accountLoggedOutPanel")?.classList.toggle("hidden", connected);
     $("accountLoggedInPanel")?.classList.toggle("hidden", !connected);
     $("profileCard")?.classList.toggle("hidden", !connected);
@@ -52,7 +52,7 @@ ctx.hydrateUserUi = function () {
 };
 
 ctx.loadProfile = async function (render = true) {
-    if (!state.user?.accessToken) return;
+    if (!state.user?.userId) return;
     try {
         state.profile = await api("/auth/profile");
         state.user = { ...state.user, emailVerified: state.profile.emailVerified };
@@ -65,7 +65,7 @@ ctx.loadProfile = async function (render = true) {
 };
 
 ctx.renderProfile = function () {
-    const disabled = !state.user?.accessToken;
+    const disabled = !state.user?.userId;
     ["profileWeightMode", "profileLivingRest", "profileAdvancedRav", "profileNetIncomeAfterTax", "profileRent", "profileCredits", "profileFixedCharges", "profileTransport", "profileInsurance", "profileOtherMandatoryExpenses", "profileMenstrualProtection", "profileVegetarian", "profileNoAlcohol", "profileLivingRestPublic"].forEach(id => {
         const el = $(id);
         if (el) el.disabled = disabled;
@@ -98,11 +98,11 @@ ctx.renderProfile = function () {
 ctx.updateProfileFieldState = function () {
     const averageMode = $("profileWeightMode")?.value === "AVERAGE";
     const advanced = !!$("profileAdvancedRav")?.checked && !averageMode;
-    if ($("profileLivingRest")) $("profileLivingRest").disabled = !state.user?.accessToken || averageMode || advanced;
-    if ($("profileAdvancedRav")) $("profileAdvancedRav").disabled = !state.user?.accessToken || averageMode;
+    if ($("profileLivingRest")) $("profileLivingRest").disabled = !state.user?.userId || averageMode || advanced;
+    if ($("profileAdvancedRav")) $("profileAdvancedRav").disabled = !state.user?.userId || averageMode;
     if ($("profileAdvancedBlock")) $("profileAdvancedBlock").classList.toggle("hidden", !advanced);
     ["profileNetIncomeAfterTax", "profileRent", "profileCredits", "profileFixedCharges", "profileTransport", "profileInsurance", "profileOtherMandatoryExpenses", "profileMenstrualProtection"].forEach(id => {
-        if ($(id)) $(id).disabled = !state.user?.accessToken || !advanced;
+        if ($(id)) $(id).disabled = !state.user?.userId || !advanced;
     });
     if (averageMode && $("profileAdvancedRav")) $("profileAdvancedRav").checked = false;
 };
@@ -137,7 +137,7 @@ ctx.renderProfileLinkedTrips = function () {
     const container = $("profileLinkedTripsList");
     if (!container) return;
     const linkedPersons = state.profile?.linkedPersons || [];
-    if (!state.user?.accessToken) {
+    if (!state.user?.userId) {
         container.innerHTML = `<p class="small">Connecte-toi pour voir tes voyages liés.</p>`;
         return;
     }
@@ -160,7 +160,7 @@ ctx.selectedLinkedPersonIdsForProfileApply = function () {
 };
 
 ctx.applyProfileToSelectedLinkedPersons = async function () {
-    if (!state.user?.accessToken) {
+    if (!state.user?.userId) {
         showMessage("Connecte-toi avant d’appliquer ton profil.", "error");
         return;
     }
@@ -208,7 +208,7 @@ ctx.profilePayload = function () {
 
 ctx.saveProfile = async function (event) {
     event.preventDefault();
-    if (!state.user?.accessToken) {
+    if (!state.user?.userId) {
         showMessage("Connecte-toi avant de modifier ton profil.", "error");
         return;
     }

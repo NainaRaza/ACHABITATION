@@ -20,12 +20,9 @@ export function asArray(value) {
 }
 
 function normalizeStoredUser(user) {
-    if (user && !user.accessToken && user.devToken) {
-        user.accessToken = user.devToken;
-        delete user.devToken;
-        writeJson("achabitation.user", user);
-    }
-    return user;
+    if (!user) return null;
+    const { accessToken, sessionToken, devToken, ...safeUser } = user;
+    return safeUser;
 }
 
 export const state = {

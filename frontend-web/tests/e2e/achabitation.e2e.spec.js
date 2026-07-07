@@ -34,6 +34,7 @@ async function mockApi(page) {
     logoutCalls: 0
   };
   let nextId = 1;
+  let currentSessionUserId = null;
   const id = prefix => `${prefix}-${nextId++}`;
 
   await page.route("**/api/v1/**", async route => {
@@ -45,22 +46,29 @@ async function mockApi(page) {
     const body = request.postDataJSON?.() ?? null;
 
     if (path === "/health") return route.fulfill(json(200, { status: "UP" }));
+    if (path === "/auth/csrf" && method === "GET") return route.fulfill(json(200, { note: "CSRF prêt." }));
     if (path === "/auth/register" && method === "POST") {
       const user = { userId: id("user"), email: body.email, displayName: body.displayName, accessToken: id("token") };
       db.users.push(user);
+      currentSessionUserId = user.userId;
       return route.fulfill(json(200, user));
     }
     if (path === "/auth/login" && method === "POST") {
       const user = db.users.find(candidate => candidate.email === body.email || candidate.displayName === body.email);
+      if (user) currentSessionUserId = user.userId;
       return route.fulfill(user ? json(200, user) : json(401, { message: "Identifiants invalides" }));
     }
     if (path === "/auth/logout" && method === "POST") {
       db.logoutCalls += 1;
+      currentSessionUserId = null;
       return route.fulfill(json(204, null));
     }
-    if (!token) return route.fulfill(json(401, { message: "Session expirée" }));
+    const authenticatedUser = token
+      ? db.users.find(candidate => candidate.accessToken === token)
+      : db.users.find(candidate => candidate.userId === currentSessionUserId);
+    if (!authenticatedUser) return route.fulfill(json(401, { message: "Session expirée" }));
     if (path === "/auth/profile" && method === "GET") {
-      const user = db.users.find(candidate => candidate.accessToken === token);
+      const user = authenticatedUser;
       return route.fulfill(json(200, { userId: user?.userId, email: user?.email, displayName: user?.displayName, livingRest: 0, weightMode: "AVERAGE", customConstraints: [], linkedPersons: [] }));
     }
     if (path === "/trips" && method === "GET") return route.fulfill(json(200, db.trips));
@@ -74,7 +82,7 @@ async function mockApi(page) {
     if (personCurrentUser && method === "POST") {
       const tripId = personCurrentUser[1];
       const trip = db.trips.find(candidate => candidate.id === tripId);
-      const user = db.users.find(candidate => candidate.accessToken === token);
+      const user = authenticatedUser;
       const person = { id: "person-1", tripId, name: user.displayName, linkedUserId: user.userId, guest: false, active: true, livingRestHidden: false, weightMode: "AVERAGE", presencePeriods: [{ startDate: trip.startDate, endDate: trip.endDate }], customConstraints: [] };
       db.persons.push(person);
       return route.fulfill(json(200, person));

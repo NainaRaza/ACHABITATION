@@ -2,7 +2,7 @@
 // Les fonctions sont installées dans un contexte partagé pour éviter les dépendances circulaires entre modules.
 
 export function install(ctx) {
-    const { state, writeJson, asArray, api, fetchBlob, $, showMessage, showApiError, money, dateFr, selectedCurrency, canonicalConstraintName, constraintKey } = ctx;
+    const { state, writeJson, asArray, api, fetchBlob, sanitizeAuthUser, $, showMessage, showApiError, money, dateFr, selectedCurrency, canonicalConstraintName, constraintKey } = ctx;
 
 ctx.clearSessionState = function () {
     state.user = null;
@@ -55,7 +55,7 @@ ctx.loginUser = async function () {
     }
 
     try {
-        state.user = await api("/auth/login", { method: "POST", body: JSON.stringify(payload) });
+        state.user = sanitizeAuthUser(await api("/auth/login", { method: "POST", body: JSON.stringify(payload) }));
         $("loginPassword").value = "";
         await ctx.afterAuthentication("Compte connecté.");
     } catch (error) {
@@ -83,7 +83,7 @@ ctx.createUser = async function () {
         const response = await api("/auth/register", { method: "POST", body: JSON.stringify(payload) });
         $("registerPassword").value = "";
         if (response?.accessToken) {
-            state.user = response;
+            state.user = sanitizeAuthUser(response);
             await ctx.afterAuthentication(response.note || "Compte créé et connecté.");
         } else {
             state.user = null;
@@ -122,10 +122,10 @@ ctx.confirmPasswordReset = async function () {
         return;
     }
     try {
-        state.user = await api("/auth/password/reset", {
+        state.user = sanitizeAuthUser(await api("/auth/password/reset", {
             method: "POST",
             body: JSON.stringify({ token, newPassword })
-        });
+        }));
         $("resetPasswordToken").value = "";
         $("resetPasswordNew").value = "";
         ctx.cleanAccountActionQueryParams();
@@ -141,10 +141,10 @@ ctx.confirmEmailVerification = async function (token) {
         return;
     }
     try {
-        state.user = await api("/auth/email/verify", {
+        state.user = sanitizeAuthUser(await api("/auth/email/verify", {
             method: "POST",
             body: JSON.stringify({ token })
-        });
+        }));
         ctx.cleanAccountActionQueryParams();
         await ctx.afterAuthentication("Email vérifié et compte connecté.");
     } catch (error) {
@@ -194,7 +194,7 @@ ctx.handleAccountActionTokens = async function () {
 
 ctx.updateAccount = async function (event) {
     event.preventDefault();
-    if (!state.user?.accessToken) {
+    if (!state.user?.userId) {
         showMessage("Connecte-toi avant de modifier ton compte.", "error");
         return;
     }
@@ -204,7 +204,7 @@ ctx.updateAccount = async function (event) {
     };
     try {
         const updatedAccount = await api("/auth/account", { method: "PUT", body: JSON.stringify(payload) });
-        state.user = { ...state.user, ...updatedAccount, accessToken: updatedAccount.accessToken || state.user.accessToken };
+        state.user = sanitizeAuthUser({ ...state.user, ...updatedAccount });
         writeJson("achabitation.user", state.user);
         ctx.hydrateUserUi();
         ctx.hidePanel("accountEditForm");
@@ -221,7 +221,7 @@ ctx.updateAccount = async function (event) {
 
 ctx.changePassword = async function (event) {
     event.preventDefault();
-    if (!state.user?.accessToken) {
+    if (!state.user?.userId) {
         showMessage("Connecte-toi avant de changer ton mot de passe.", "error");
         return;
     }
@@ -235,7 +235,7 @@ ctx.changePassword = async function (event) {
     }
     try {
         const updated = await api("/auth/password", { method: "PUT", body: JSON.stringify(payload) });
-        state.user = { ...state.user, ...updated, accessToken: updated.accessToken || state.user.accessToken };
+        state.user = sanitizeAuthUser({ ...state.user, ...updated });
         writeJson("achabitation.user", state.user);
         $("currentPassword").value = "";
         $("newPassword").value = "";
@@ -247,7 +247,7 @@ ctx.changePassword = async function (event) {
 };
 
 ctx.exportAccountData = async function () {
-    if (!state.user?.accessToken) {
+    if (!state.user?.userId) {
         showMessage("Connecte-toi avant d’exporter tes données.", "error");
         return;
     }
@@ -268,7 +268,7 @@ ctx.exportAccountData = async function () {
 };
 
 ctx.deleteAccount = async function () {
-    if (!state.user?.accessToken) {
+    if (!state.user?.userId) {
         showMessage("Connecte-toi avant de supprimer ton compte.", "error");
         return;
     }
@@ -288,7 +288,7 @@ ctx.deleteAccount = async function () {
 
 ctx.logoutUser = async function () {
     try {
-        if (state.user?.accessToken) {
+        if (state.user?.userId) {
             await api("/auth/logout", { method: "POST" });
         }
     } catch (_) {

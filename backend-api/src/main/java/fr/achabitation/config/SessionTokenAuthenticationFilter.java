@@ -1,10 +1,12 @@
 package fr.achabitation.config;
 
+import fr.achabitation.application.SessionCookieService;
 import fr.achabitation.application.SessionTokenService;
 import fr.achabitation.infrastructure.repository.UserRepository;
 import fr.achabitation.infrastructure.repository.UserSessionRepository;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
+import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -69,6 +71,18 @@ public class SessionTokenAuthenticationFilter extends OncePerRequestFilter {
             return authorization.substring("Bearer ".length()).trim();
         }
         String sessionToken = request.getHeader("X-Session-Token");
-        return sessionToken == null ? null : sessionToken.trim();
+        if (sessionToken != null && !sessionToken.isBlank()) {
+            return sessionToken.trim();
+        }
+        Cookie[] cookies = request.getCookies();
+        if (cookies == null) {
+            return null;
+        }
+        for (Cookie cookie : cookies) {
+            if (SessionCookieService.SESSION_COOKIE_NAME.equals(cookie.getName())) {
+                return cookie.getValue() == null ? null : cookie.getValue().trim();
+            }
+        }
+        return null;
     }
 }
