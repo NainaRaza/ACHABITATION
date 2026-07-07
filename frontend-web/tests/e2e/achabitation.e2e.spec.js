@@ -19,6 +19,11 @@ async function closeAccountPanel(page) {
   await expect(page.locator("#dashboardTab")).toHaveClass(/active/);
 }
 
+async function openTripTab(page, tab, panelSelector) {
+  await page.click(`.tab[data-tab="${tab}"]`);
+  await expect(page.locator(panelSelector)).toHaveClass(/active/);
+}
+
 async function mockApi(page) {
   const db = {
     users: [],
@@ -125,9 +130,14 @@ test("inscription, voyage, participant, dépense et résumé", async ({ page }) 
   await page.click("#tripForm button[type=submit]");
   await expect(page.locator("#messageBox")).toContainText("Voyage créé");
 
+  await openTripTab(page, "persons", "#personsTab");
+  await expect(page.locator("#addCurrentUserPersonBtn")).toBeVisible();
+  page.once("dialog", dialog => dialog.accept());
   await page.click("#addCurrentUserPersonBtn");
   await expect(page.locator("#messageBox")).toContainText("ajouté");
 
+  await openTripTab(page, "expenses", "#expensesTab");
+  await expect(page.locator("#showExpenseFormBtn")).toBeVisible();
   await page.click("#showExpenseFormBtn");
   await page.fill("#expenseTitle", "Courses");
   await page.fill("#expenseDate", "2026-08-02");
@@ -166,5 +176,5 @@ test("logout appelle le backend et nettoie la session locale", async ({ page }) 
   await page.click("#logoutUserBtn");
   await expect(page.locator("#messageBox")).toContainText("Compte déconnecté");
   expect(db.logoutCalls).toBe(1);
-  await expect.poll(() => page.evaluate(() => localStorage.getItem("achabitation.user"))).toBe("null");
+  await expect.poll(() => page.evaluate(() => localStorage.getItem("achabitation.user"))).toBe(null);
 });
